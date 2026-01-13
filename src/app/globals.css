@@ -1,0 +1,180 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --background: #1A0B2E;
+  --foreground: #F0F0F0;
+}
+
+@theme {
+  /* Colors */
+  --color-neon-green: #00FF00;
+  --color-deep-void: #1A0B2E;
+  --color-hot-pink: #FF00FF;
+  --color-electric-yellow: #FFFF00;
+  --color-off-white: #F0F0F0;
+
+  /* Fonts */
+  --font-display: var(--font-syne), sans-serif;
+  --font-mono: var(--font-space-mono), monospace;
+  --font-body: var(--font-inter), sans-serif;
+
+  /* Borders */
+  --border-width-3: 3px;
+  --border-width-4: 4px;
+
+  /* Shadows */
+  --shadow-hard: 8px 8px 0px #000000;
+}
+
+/* Global Styles */
+body {
+  background-color: var(--color-deep-void);
+  color: var(--color-off-white);
+  font-family: var(--font-body);
+}
+
+/* Custom Utilities */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.9;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-deep-void);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neon-green);
+  border: 2px solid var(--color-deep-void);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-hot-pink);
+}
+
+/* Selection */
+::selection {
+  color: black;
+}
+
+/* Glitch Hover Effect */
+@layer utilities {
+  .hover-glitch {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hover-glitch::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-neon-green);
+    /* Glitch color */
+    transform: translateX(-101%);
+    /* Start hidden */
+    transition: transform 0ms;
+    /* Instant, no smooth slide usually */
+    z-index: -1;
+  }
+
+  .hover-glitch:hover::after {
+    transform: translateX(0);
+  }
+
+  .hover-glitch:hover {
+    color: black;
+    /* Text becomes black on green bg */
+    font-weight: bold;
+    text-shadow: 2px 0 0 red, -2px 0 0 blue;
+    /* Slight chromatic aberration */
+  }
+}
+
+
+/* Kinetic Marquee Animations */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes marquee2 {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee2 {
+  animation: marquee2 25s linear infinite;
+}
+
+/* Floating Shapes Animations */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 12s linear infinite;
+}
+
+.animate-spin-reverse-slow {
+  animation: spin 15s linear infinite reverse;
+}
