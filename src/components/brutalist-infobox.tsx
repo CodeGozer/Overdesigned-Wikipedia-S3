@@ -2,6 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 const ModelViewer = dynamic(() => import('./model-viewer'), { ssr: false });
 
@@ -30,15 +31,21 @@ interface BrutalistInfoboxProps {
 export function BrutalistInfobox({ title = "Object: Cube", image, stats }: BrutalistInfoboxProps) {
     return (
         <div
-            className="relative w-full bg-deep-void/50 border-4 border-hot-pink shadow-hard backdrop-blur-sm"
+            className="relative w-full bg-deep-void/50 border-4 border-[var(--theme-accent)] shadow-hard backdrop-blur-sm"
             style={{ clipPath: "polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)" }}
         >
             {/* 1:1 Placeholder for 3D Model or Image */}
-            <div className="aspect-square w-full bg-gray-900/50 flex items-center justify-center border-b-4 border-hot-pink relative overflow-hidden group">
+            <div className="aspect-square w-full bg-gray-900/50 flex items-center justify-center border-b-4 border-[var(--theme-accent)] relative overflow-hidden group">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-800 via-gray-950 to-black opacity-50" />
 
                 {image ? (
-                    <img src={image} alt={title} className="relative z-10 w-full h-full object-cover" />
+                    <Image
+                        src={image}
+                        alt={title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 400px"
+                        className="relative z-10 w-full h-full object-cover"
+                    />
                 ) : (
                     <ModelViewer />
                 )}

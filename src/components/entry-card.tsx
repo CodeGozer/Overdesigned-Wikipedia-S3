@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { clsx } from "clsx";
 
 interface EntryCardProps {
@@ -43,7 +44,7 @@ export function EntryCard({
         <Link
             href={href}
             className={clsx(
-                "group block relative overflow-hidden bg-deep-void/10 backdrop-blur-sm border-2 transition-all duration-300",
+                "group block relative overflow-hidden bg-deep-void/10 backdrop-blur-sm border-2 transition-colors duration-300 will-change-transform",
                 borderColor,
                 sizeClasses[size],
                 className
@@ -54,12 +55,17 @@ export function EntryCard({
             data-animate="entry-card"
             data-index={index}
         >
-            {/* Background Image (Greyscale -> Color) */}
+            {/* Background Image (Lazy Loaded + Hardware Accelerated) */}
             {imageUrl && (
-                <div
-                    className="absolute inset-0 z-0 bg-cover bg-center opacity-80 transition-all duration-500 grayscale group-hover:grayscale-0 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${imageUrl})` }}
-                />
+                <div className="absolute inset-0 z-0 overflow-hidden">
+                    <Image
+                        src={imageUrl}
+                        alt={title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover opacity-80 transition-all duration-500 grayscale group-hover:grayscale-0 group-hover:scale-105 will-change-transform"
+                    />
+                </div>
             )}
 
             {/* Solid Fill Animation (Overlay) */}
@@ -70,13 +76,13 @@ export function EntryCard({
             )} />
 
             {/* Gradient Scrim for Text Legibility */}
-            <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
 
             {/* Content */}
             <div className="relative z-20 p-6 flex flex-col h-full justify-between">
                 <div className="flex justify-between items-start">
                     {/* Category Badge */}
-                    <span className="font-mono text-[10px] uppercase tracking-widest bg-black/50 backdrop-blur px-2 py-1 text-white border border-white/20">
+                    <span className="font-mono text-[10px] uppercase tracking-widest bg-black/50 backdrop-blur-sm px-2 py-1 text-white border border-white/20">
                         [{category}]
                     </span>
 
@@ -93,7 +99,8 @@ export function EntryCard({
                     )}>
                         {title}
                     </h3>
-                    <div className="h-0.5 w-0 group-hover:w-full bg-neon-green transition-all duration-300 mt-2" />
+                    {/* Optimized Divider Animation (Scale instead of Width) */}
+                    <div className="h-0.5 w-full bg-neon-green mt-2 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
                 </div>
             </div>
         </Link>

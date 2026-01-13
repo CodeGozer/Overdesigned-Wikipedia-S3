@@ -1,11 +1,5 @@
-import Link from "next/link";
-import { DigitalClock } from "@/components/digital-clock";
-import { RandomButton } from "@/components/random-button";
-import { BentoGrid } from "@/components/bento-grid";
-import { EntryCard } from "@/components/entry-card";
-import { KineticMarquee } from "@/components/kinetic-marquee";
 import { getWikiSummary } from "@/services/wiki";
-import { HeroAnimator } from "@/components/hero-animator";
+import { HomeOrchestrator } from "@/components/home-orchestrator";
 
 // Configuration: The Interest Grid
 const INTERESTS = [
@@ -38,66 +32,7 @@ export default async function Home() {
 
   return (
     <div className="pb-24">
-      <KineticMarquee />
-
-      {/* Hero Section */}
-      <HeroAnimator>
-        <div className="container mx-auto px-4 py-12 md:py-24 max-w-screen-2xl">
-          <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/10 pb-12 mb-12 gap-8">
-            <div data-animate="hero">
-              <DigitalClock />
-            </div>
-            <div className="flex flex-col items-end gap-2" data-animate="hero">
-              <div className="text-xs font-mono text-gray-500 uppercase tracking-widest text-right">
-                    /// NICO'S ARCHIVE<br />
-                    /// INDEX OF OBSESSIONS
-              </div>
-              <RandomButton />
-            </div>
-          </div>
-
-          {/* The Interest Grid (Tetris Layout) */}
-          {/* We disable the internal scroll animation because we rely on the client animation wrapper if we decide to add one, 
-            but actually since this is a server component we might want to bring back the client-side orchestrator 
-            OR just let the items animate nicely with CSS or re-wrap. 
-            For now, we'll keep it simple as the original page had a client wrapper.
-            Wait, I'm editing the page component to be ASYNC. This means I can't use `useGSAP` or `useRef` directly here.
-            I need to move the logic or use a Client Component wrapper for the timeline. 
-            
-            Strategy:
-            1. Create a <HomeClientWrapper> that handles the GSAP entrance.
-            2. Pass the fetched data to it.
-            
-            Actually, to save creating a new file right now, I'll strip the GSAP hook from this Server Component
-            and rely on `EntryCard` CSS transitions or a simple script. 
-            But the user expects the animation. 
-            
-            Better plan: make a <GridAnimator> client component that wraps the BentoGrid.
-        */}
-
-          <BentoGrid disableAnimation={false}>
-            {/* Enable BentoGrid animation since we are removing the parent GSAP timeline */}
-
-            {articles.map((item, index) => {
-              if (!item.summary) return null;
-
-              return (
-                <EntryCard
-                  key={item.slug}
-                  index={index}
-                  title={item.label}
-                  category={item.category}
-                  date="LIVE"
-                  href={`/wiki/${encodeURIComponent(item.slug)}`}
-                  color={item.color as any}
-                  imageUrl={item.summary.thumbnail?.source}
-                  size={item.size}
-                />
-              );
-            })}
-          </BentoGrid>
-        </div>
-      </HeroAnimator>
+      <HomeOrchestrator initialArticles={articles as any} />
     </div>
   );
 }

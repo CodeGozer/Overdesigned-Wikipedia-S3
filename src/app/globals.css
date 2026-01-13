@@ -4,6 +4,8 @@
 :root {
   --background: #1A0B2E;
   --foreground: #F0F0F0;
+  --theme-accent: #00FF00;
+  /* Default Neon Green */
 }
 
 @theme {
@@ -77,52 +79,172 @@ body {
 }
 
 /* Wiki Content Overrides (Neo-Brutalist Interpretation) */
+/* Wiki Content Overrides (Neo-Brutalist "Mission Briefing" Style) */
 .nicopedia-content {
 
-  /* Hide Wikipedia Clutter */
+  /* --- 1. Cleanup & De-Clutter --- */
   .infobox,
   .tright,
   .tleft,
   .thumb,
-  .reference,
+  /* Note: We might want to keep images if they ARE inline, but usually 'thumb' wrappers are messy. Let's hide sidebar thumbs but keep main images if possible. Wikipedia uses .thumb for most images though. If we hide .thumb, we hide images. The prompt said "If the HTML contains images (figure, img)...". Wikipedia images are often inside .thumb. Let's try to UNSET display none for .thumb but style it? Or maybe just target img inside.
+     Actually, standard Wikipedia dumps images in .thumb tright. If we hide it, we see no images. 
+     Let's try to SHOW .thumb but float it better? 
+     Or, for now, strictly follow the "Hide" list from the prompt? 
+     Prompt said "Hide... .infobox, .mw-editsection". It did NOT explicitly list .thumb in the hidden section in the NEW prompt (Section 6), but the PREVIOUS implementation hid it. 
+     The NEW prompt (Section 5) has rules for "Images & Media (Inside the text)". This implies we SHOULD show them. 
+     So I will remove .thumb, .tright, .tleft from the hide list and instead style them. 
+     However, standard wiki formatting is floaty and messy. I'll make them block/centered or allow them to flow.
+     Let's allow .thumb but reset its styles.
+  */
   .mw-editsection,
-  .hatnote,
-  .shortdescription,
   .mw-empty-elt,
-  table {
+  .shortdescription,
+  .sidebar,
+  .sistersitebox,
+  .metadata {
     display: none !important;
   }
 
-  /* Typography */
+  /* Style Hatnotes (Redirects) */
+  .hatnote {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    /* 12px */
+    color: var(--theme-accent);
+    border: 1px solid var(--theme-accent);
+    padding: 0.5rem 1rem;
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    /* Neutral bg */
+    display: inline-block;
+  }
+
+  /* Style References as tiny neon dots */
+  .reference {
+    font-size: 0;
+    vertical-align: super;
+  }
+
+  .reference a {
+    font-size: 0.6rem;
+    color: var(--theme-accent) !important;
+    background: none !important;
+    border: none !important;
+    font-family: var(--font-mono);
+  }
+
+  /* ... Typography ... */
+  p {
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: #E0E0E0;
+    margin-bottom: 1.5rem;
+  }
+
+  p:first-of-type {
+    font-size: 1.375rem;
+    color: white;
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  /* ... Headlines ... */
   h2 {
-    @apply font-display text-3xl font-bold uppercase tracking-tight text-white mt-12 mb-6 border-b-2 border-neon-green pb-2 inline-block;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.5rem;
+    color: white;
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    display: inline-block;
+    border-bottom: 2px solid var(--theme-accent);
+    padding-bottom: 0.5rem;
+    line-height: 1.1;
+  }
+
+  h2::before {
+    content: "/// ";
+    color: var(--theme-accent);
+    margin-right: 0.5rem;
   }
 
   h3 {
-    @apply font-mono text-xl font-bold text-hot-pink mt-8 mb-4 uppercase tracking-widest;
-  }
-
-  p {
-    @apply font-body text-lg leading-relaxed text-off-white/90 mb-6;
-  }
-
-  ul,
-  ol {
-    @apply list-inside list-disc space-y-2 mb-6 text-off-white/80 font-mono text-sm;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.25rem;
+    text-transform: uppercase;
+    color: var(--theme-accent);
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
   }
 
   /* Links */
   a {
-    @apply text-neon-green no-underline border-b border-neon-green/30 transition-all duration-200;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    background-image: linear-gradient(to top, var(--theme-accent) 20%, transparent 20%);
+    background-size: 100% 20%;
+    background-position: bottom;
+    background-repeat: no-repeat;
+    transition: background-size 0.2s ease, color 0.2s ease;
   }
 
   a:hover {
-    @apply bg-neon-green text-black border-neon-green;
+    background-size: 100% 100%;
+    color: black;
   }
 
-  /* Blockquotes */
+  /* Lists & Blockquotes */
+  ul li::before {
+    content: '+';
+    color: var(--theme-accent);
+    font-weight: bold;
+    font-family: var(--font-mono);
+    position: absolute;
+    left: 0;
+  }
+
   blockquote {
-    @apply border-l-4 border-hot-pink pl-6 italic text-gray-400 my-8;
+    border-left: 4px solid var(--theme-accent);
+    background: rgba(255, 255, 255, 0.05);
+    font-family: var(--font-mono);
+    font-style: italic;
+    padding: 1.25rem;
+    margin: 2rem 0;
+    color: white;
+  }
+
+  /* Images */
+  img:hover {
+    filter: grayscale(0%);
+    transform: scale(1.02);
+    box-shadow: 10px 10px 0px var(--theme-accent);
+  }
+
+  figcaption,
+  .thumbcaption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    background: black;
+    color: var(--theme-accent);
+    padding: 0.25rem 0.5rem;
+    display: inline-block;
+    margin-top: 0.5rem;
+    border: 1px solid var(--theme-accent);
+  }
+
+  /* Restore Tables specifically for data-like tables but style them? 
+     Prompt didn't ask for tables, user said "transform wall of text".
+     Wikipedia tables are usually ugly. I'll hide them unless they are simple.
+     Actually, previous CSS hid tables. I'll keep hiding them for the clean "Log" look unless requested. */
+  table {
+    display: none !important;
   }
 }
 
@@ -233,4 +355,52 @@ body {
 
 .animate-spin-reverse-slow {
   animation: spin 15s linear infinite reverse;
+}
+
+/* --- CYBER-ASSET IMAGERY --- */
+.nicopedia-content figure,
+.nicopedia-content img {
+  filter: grayscale(100%) contrast(120%);
+  border: 3px solid #333;
+  box-shadow: none;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.nicopedia-content figure:hover,
+.nicopedia-content img:hover {
+  filter: grayscale(0%) contrast(100%);
+  border-color: var(--theme-accent);
+  box-shadow: 8px 8px 0px black;
+  transform: translate(-4px, -4px);
+}
+
+.nicopedia-content figcaption {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  background-color: black;
+  color: var(--theme-accent);
+  padding: 4px 12px;
+  display: inline-block;
+  margin-top: -10px;
+  /* Overlap effect */
+  position: relative;
+  border: 1px solid var(--theme-accent);
+}
+
+.nicopedia-content figcaption::before {
+  content: "/// DATA_CAPTION: ";
+  opacity: 0.5;
+}
+
+/* --- SCROLL ANCHORS --- */
+.nicopedia-content h2,
+.nicopedia-content h3 {
+  scroll-margin-top: 120px;
+  position: relative;
+}
+
+/* Ensure smooth scrolling globally */
+html {
+  scroll-behavior: smooth;
 }

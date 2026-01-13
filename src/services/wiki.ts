@@ -19,6 +19,11 @@ export interface WikiSummary {
     lang?: string;
 }
 
+const HEADERS = {
+    "User-Agent": "Nicopedia/1.0 (nicokornuijt@example.com) NextJS-Education-Project",
+    "Accept": "application/json"
+};
+
 export interface WikiSearchResult {
     title: string;
     url: string;
@@ -29,7 +34,7 @@ export interface WikiSearchResult {
  */
 export async function getWikiSummary(title: string): Promise<WikiSummary | null> {
     try {
-        const res = await fetch(`${REST_API_BASE}page/summary/${encodeURIComponent(title)}`);
+        const res = await fetch(`${REST_API_BASE}page/summary/${encodeURIComponent(title)}`, { headers: HEADERS });
         if (!res.ok) return null;
         return await res.json();
     } catch (error) {
@@ -43,8 +48,12 @@ export async function getWikiSummary(title: string): Promise<WikiSummary | null>
  */
 export async function getWikiHtml(title: string): Promise<string | null> {
     try {
-        const res = await fetch(`${REST_API_BASE}page/html/${encodeURIComponent(title)}`);
-        if (!res.ok) return null;
+        const url = `${REST_API_BASE}page/html/${encodeURIComponent(title)}`;
+        const res = await fetch(url, { headers: { ...HEADERS, "Accept": "text/html" } });
+        if (!res.ok) {
+            console.error(`HTML Fetch Failed: ${res.status} ${res.statusText}`);
+            return null;
+        }
         return await res.text();
     } catch (error) {
         console.error("Wiki HTML Fetch Error:", error);
@@ -67,7 +76,7 @@ export async function getRandomArticle(): Promise<WikiSummary | null> {
             origin: "*"
         });
 
-        const res = await fetch(`${ACTION_API_BASE}?${params.toString()}`);
+        const res = await fetch(`${ACTION_API_BASE}?${params.toString()}`, { headers: HEADERS });
         if (!res.ok) return null;
 
         const data = await res.json();
@@ -98,7 +107,7 @@ export async function searchWiki(query: string): Promise<WikiSearchResult[]> {
             origin: "*"
         });
 
-        const res = await fetch(`${ACTION_API_BASE}?${params.toString()}`);
+        const res = await fetch(`${ACTION_API_BASE}?${params.toString()}`, { headers: HEADERS });
         if (!res.ok) return [];
 
         // Opensearch returns array: [query, [titles], [descriptions], [urls]]
