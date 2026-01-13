@@ -19,10 +19,10 @@ export function ArticleLayout({ children, title, infobox }: ArticleLayoutProps) 
             <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_300px] lg:grid-cols-[1fr_350px]">
                 {/* Main Content Area */}
                 <article
-                    className="prose prose-stone dark:prose-invert max-w-none prose-headings:font-display"
+                    className="prose prose-invert max-w-none prose-headings:font-display prose-headings:text-white prose-p:text-off-white/80"
                     data-animate="article-fade-in"
                 >
-                    <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 mb-6 scroll-m-20 underline decoration-indigo-500 decoration-4 underline-offset-4">
+                    <h1 className="text-4xl font-extrabold tracking-tight text-white mb-6 scroll-m-20 underline decoration-indigo-500 decoration-4 underline-offset-4 uppercase">
                         {title}
                     </h1>
 

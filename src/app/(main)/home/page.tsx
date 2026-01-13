@@ -1,116 +1,103 @@
-"use client";
-
-import { useRef } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
+import Link from "next/link";
 import { DigitalClock } from "@/components/digital-clock";
 import { RandomButton } from "@/components/random-button";
 import { BentoGrid } from "@/components/bento-grid";
 import { EntryCard } from "@/components/entry-card";
 import { KineticMarquee } from "@/components/kinetic-marquee";
-import { BrutalistInfobox } from "@/components/brutalist-infobox"; // Import Infobox
-import Link from "next/link";
-import EF2000_DATA from "@/data/ef-2000.json"; // Import Data
+import { getWikiSummary } from "@/services/wiki";
+import { HeroAnimator } from "@/components/hero-animator";
 
-// Note: ModelViewer dynamic import removed here as it is inside BrutalistInfobox now
+// Configuration: The Interest Grid
+const INTERESTS = [
+  { slug: 'Fallout_(series)', label: 'Fallout', size: 'HERO', category: 'GAME', color: 'neon-green' },
+  { slug: 'South_Africa', label: 'South Africa', size: 'HERO', category: 'PLACE', color: 'hot-pink' },
+  { slug: 'Vocaloid', label: 'Vocaloids', size: 'TALL', category: 'TECH', color: 'neon-green' },
+  { slug: 'Jet_fighter', label: 'Fighter Jets', size: 'WIDE', category: 'TECH', color: 'hot-pink' },
+  { slug: 'Clair_Obscur:_Expedition_33', label: 'Expedition 33', size: 'WIDE', category: 'GAME', color: 'neon-green' },
+  { slug: 'Destiny_2', label: 'Destiny', size: 'STANDARD', category: 'GAME', color: 'hot-pink' },
+  { slug: 'Jujutsu_Kaisen', label: 'JJK', size: 'TALL', category: 'ANIME', color: 'neon-green' },
+  { slug: 'Bleach_(manga)', label: 'Bleach', size: 'TALL', category: 'MANGA', color: 'hot-pink' },
+  { slug: 'Homebuilt_computer', label: 'PC Building', size: 'STANDARD', category: 'TECH', color: 'neon-green' },
+  { slug: 'Unus_Annus', label: 'Unus Annus', size: 'STANDARD', category: 'LORE', color: 'hot-pink' },
+  { slug: 'Marvel_Comics', label: 'Marvel', size: 'STANDARD', category: 'COMICS', color: 'neon-green' },
+  { slug: 'DC_Comics', label: 'DC', size: 'STANDARD', category: 'COMICS', color: 'hot-pink' },
+  { slug: 'Manga', label: 'Manga', size: 'STANDARD', category: 'ART', color: 'neon-green' },
+] as const;
 
-// Dummy Data
-const RECENT_ENTRIES = [
-  { title: "Neuro-Link Protocals", category: "Cybernetics", date: "JAN 12", color: "hot-pink" },
-  { title: "Tokyo Ghost District", category: "Urbanism", date: "JAN 10", color: "neon-green" },
-  { title: "Analog Decay", category: "Philosophy", date: "JAN 08", color: "neon-green" },
-  { title: "Void Synthesis", category: "Audio", date: "JAN 05", color: "hot-pink" },
-  { title: "Brutalist Web 3.0", category: "Design", date: "JAN 01", color: "neon-green" },
-];
-
-export default function Home() {
-  const containerRef = useRef(null);
-
-  // Entrance Animation
-  useGSAP(() => {
-    const tl = gsap.timeline();
-
-    // 1. Hero Reveal (Clock & Button)
-    tl.from("[data-animate='hero']", {
-      y: 50,
-      opacity: 0,
-      duration: 0.8,
-      ease: "power3.out",
-      stagger: 0.1
-    });
-
-    // 2. Grid Items Reveal (Cards)
-    // Note: BentoGrid's internal ScrollTrigger might conflict if we aren't careful.
-    // However, since this is "on mount" and they are likely in viewport, 
-    // we want a distinct "Arrival" animation that overrides or precedes scroll triggers.
-    // For simplicity, we'll let this run immediately.
-    tl.from("[data-animate='entry-card']", {
-      y: 100,
-      opacity: 0,
-      duration: 0.6,
-      stagger: 0.05,
-      ease: "expo.out",
-    }, "-=0.4"); // Overlap with hero slightly
-
-  }, { scope: containerRef });
+export default async function Home() {
+  // Fetch all interests in parallel
+  const articles = await Promise.all(
+    INTERESTS.map(async (item) => {
+      const summary = await getWikiSummary(item.slug);
+      return {
+        ...item,
+        summary
+      };
+    })
+  );
 
   return (
-    <div ref={containerRef} className="pb-24">
+    <div className="pb-24">
       <KineticMarquee />
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-12 md:py-24 max-w-screen-2xl">
-        <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/10 pb-12 mb-12 gap-8">
-          <div data-animate="hero">
-            <DigitalClock />
-          </div>
-          <div className="flex flex-col items-end gap-2" data-animate="hero">
-            <div className="text-xs font-mono text-gray-500 uppercase tracking-widest text-right">
-                    /// ACCESSING DATABASE...<br />
-                    /// STATUS: ONLINE
+      <HeroAnimator>
+        <div className="container mx-auto px-4 py-12 md:py-24 max-w-screen-2xl">
+          <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/10 pb-12 mb-12 gap-8">
+            <div data-animate="hero">
+              <DigitalClock />
             </div>
-            <RandomButton />
-          </div>
-        </div>
-
-        {/* The Grid */}
-        {/* We disable the internal scroll animation because we are handling a custom "Arrival" animation in the parent component */}
-        <BentoGrid disableAnimation={true}>
-          {/* Featured Artifact (Spans 2 cols, 2 rows approx) */}
-          <div className="md:col-span-2 md:row-span-2 group min-h-[400px]" data-animate="entry-card">
-            <Link href="/wiki/ef-2000" className="block h-full transition-transform duration-300 group-hover:scale-[1.01]">
-              <div className="relative h-full">
-                {/* We use the BrutalistInfobox but override the image to force 3D model for that 'tech' look */}
-                <BrutalistInfobox
-                  title={EF2000_DATA.infobox.title}
-                  stats={EF2000_DATA.infobox.stats.slice(0, 4)} // Show first 4 stats
-                // No image prop passed -> renders ModelViewer
-                />
-
-                {/* Optional Overlay Text to make it clear it's clickable */}
-                <div className="absolute top-4 right-4 z-20">
-                  <span className="bg-neon-green text-black text-xs font-bold px-2 py-1 uppercase tracking-widest animate-pulse">
-                                /// FEATURED
-                  </span>
-                </div>
+            <div className="flex flex-col items-end gap-2" data-animate="hero">
+              <div className="text-xs font-mono text-gray-500 uppercase tracking-widest text-right">
+                    /// NICO'S ARCHIVE<br />
+                    /// INDEX OF OBSESSIONS
               </div>
-            </Link>
+              <RandomButton />
+            </div>
           </div>
 
-          {/* Standard Entries */}
-          {RECENT_ENTRIES.map((entry: any, i) => (
-            <EntryCard
-              key={i}
-              index={i}
-              title={entry.title}
-              category={entry.category}
-              date={entry.date}
-              href="#" // Dummy links for now
-              color={entry.color}
-            />
-          ))}
-        </BentoGrid>
-      </section>
+          {/* The Interest Grid (Tetris Layout) */}
+          {/* We disable the internal scroll animation because we rely on the client animation wrapper if we decide to add one, 
+            but actually since this is a server component we might want to bring back the client-side orchestrator 
+            OR just let the items animate nicely with CSS or re-wrap. 
+            For now, we'll keep it simple as the original page had a client wrapper.
+            Wait, I'm editing the page component to be ASYNC. This means I can't use `useGSAP` or `useRef` directly here.
+            I need to move the logic or use a Client Component wrapper for the timeline. 
+            
+            Strategy:
+            1. Create a <HomeClientWrapper> that handles the GSAP entrance.
+            2. Pass the fetched data to it.
+            
+            Actually, to save creating a new file right now, I'll strip the GSAP hook from this Server Component
+            and rely on `EntryCard` CSS transitions or a simple script. 
+            But the user expects the animation. 
+            
+            Better plan: make a <GridAnimator> client component that wraps the BentoGrid.
+        */}
+
+          <BentoGrid disableAnimation={false}>
+            {/* Enable BentoGrid animation since we are removing the parent GSAP timeline */}
+
+            {articles.map((item, index) => {
+              if (!item.summary) return null;
+
+              return (
+                <EntryCard
+                  key={item.slug}
+                  index={index}
+                  title={item.label}
+                  category={item.category}
+                  date="LIVE"
+                  href={`/wiki/${encodeURIComponent(item.slug)}`}
+                  color={item.color as any}
+                  imageUrl={item.summary.thumbnail?.source}
+                  size={item.size}
+                />
+              );
+            })}
+          </BentoGrid>
+        </div>
+      </HeroAnimator>
     </div>
   );
 }

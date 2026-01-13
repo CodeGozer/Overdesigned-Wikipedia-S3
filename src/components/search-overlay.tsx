@@ -7,23 +7,28 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clsx } from "clsx";
 
-const SEARCH_ITEMS = [
-    { id: 'ef-2000', title: 'Eurofighter Typhoon', path: '/wiki/ef-2000', type: 'ARTICLE' },
-    { id: 'home', title: 'Index', path: '/home', type: 'PAGE' },
-];
+import { searchWiki, WikiSearchResult } from "@/services/wiki";
 
 export function SearchOverlay() {
     const { isOpen, closeSearch } = useSearch();
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [query, setQuery] = useState("");
+    const [results, setResults] = useState<WikiSearchResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    const filteredResults = useMemo(() => {
-        if (!query) return [];
-        return SEARCH_ITEMS.filter(item =>
-            item.title.toLowerCase().includes(query.toLowerCase())
-        );
+    // Debounced Search Effect
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (query.trim().length > 1) {
+                const searchResults = await searchWiki(query);
+                setResults(searchResults);
+            } else {
+                setResults([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
     }, [query]);
 
     useEffect(() => {
@@ -43,24 +48,25 @@ export function SearchOverlay() {
 
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev + 1) % filteredResults.length);
+                setSelectedIndex(prev => (prev + 1) % results.length);
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                setSelectedIndex(prev => (prev - 1 + filteredResults.length) % filteredResults.length);
+                setSelectedIndex(prev => (prev - 1 + results.length) % results.length);
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (filteredResults[selectedIndex]) {
-                    handleSelect(filteredResults[selectedIndex].path);
+                if (results[selectedIndex]) {
+                    handleSelect(results[selectedIndex].title);
                 }
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isOpen, filteredResults, selectedIndex]);
+    }, [isOpen, results, selectedIndex]);
 
-    const handleSelect = (path: string) => {
-        router.push(path);
+    const handleSelect = (title: string) => {
+        const slug = encodeURIComponent(title.replace(/ /g, "_"));
+        router.push(`/wiki/${slug}`);
         closeSearch();
     };
 
@@ -96,10 +102,10 @@ export function SearchOverlay() {
 
                 {/* Results List */}
                 <div className="mt-8 flex-1 overflow-y-auto min-h-[100px] space-y-2">
-                    {filteredResults.map((result, index) => (
+                    {results.map((result, index) => (
                         <button
-                            key={result.id}
-                            onClick={() => handleSelect(result.path)}
+                            key={index}
+                            onClick={() => handleSelect(result.title)}
                             className={clsx(
                                 "w-full text-left p-4 border-l-4 transition-all duration-200 group flex items-baseline justify-between",
                                 index === selectedIndex
@@ -108,17 +114,17 @@ export function SearchOverlay() {
                             )}
                         >
                             <span className={clsx(
-                                "text-2xl md:text-4xl font-bold font-display uppercase tracking-tight",
+                                "text-2xl md:text-4xl font-bold font-display uppercase tracking-tight line-clamp-1",
                                 index === selectedIndex ? "text-neon-green" : "text-gray-400 group-hover:text-gray-200"
                             )}>
                                 {result.title}
                             </span>
-                            <span className="font-mono text-xs text-gray-600 uppercase tracking-widest">
-                                {result.type}
+                            <span className="font-mono text-xs text-gray-600 uppercase tracking-widest shrink-0 ml-4">
+                                ARTICLE
                             </span>
                         </button>
                     ))}
-                    {query && filteredResults.length === 0 && (
+                    {query && results.length === 0 && (
                         <div className="text-gray-600 font-mono text-sm py-4">
                             /// NO RESULTS FOUND ///
                         </div>

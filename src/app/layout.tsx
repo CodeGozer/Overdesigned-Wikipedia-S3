@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="scroll-smooth dark" suppressHydrationWarning>
       <body
         className={`${syne.variable} ${spaceMono.variable} ${inter.variable} antialiased min-h-screen bg-deep-void text-off-white font-body selection:bg-neon-green selection:text-black`}
         suppressHydrationWarning

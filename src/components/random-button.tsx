@@ -1,13 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { getRandomArticle } from "@/services/wiki";
 
 export function RandomButton() {
     const router = useRouter();
 
-    const handleRandom = () => {
-        // In a real app, fetch random from API. For now, hardcode EF-2000.
-        router.push("/wiki/ef-2000");
+    const handleRandom = async () => {
+        // Fetch random article
+        const random = await getRandomArticle();
+        if (random?.title) {
+            // Encode title for URL usage (spaces to underscores usually handled by Wiki, but ensuring clean URL)
+            const slug = encodeURIComponent(random.title.replace(/ /g, "_"));
+            router.push(`/wiki/${slug}`);
+        }
     };
 
     return (

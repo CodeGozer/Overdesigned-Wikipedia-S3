@@ -70,6 +70,62 @@ body {
   color: black;
 }
 
+@layer utilities {
+  .text-stroke-thin {
+    -webkit-text-stroke: 1px currentColor;
+  }
+}
+
+/* Wiki Content Overrides (Neo-Brutalist Interpretation) */
+.nicopedia-content {
+
+  /* Hide Wikipedia Clutter */
+  .infobox,
+  .tright,
+  .tleft,
+  .thumb,
+  .reference,
+  .mw-editsection,
+  .hatnote,
+  .shortdescription,
+  .mw-empty-elt,
+  table {
+    display: none !important;
+  }
+
+  /* Typography */
+  h2 {
+    @apply font-display text-3xl font-bold uppercase tracking-tight text-white mt-12 mb-6 border-b-2 border-neon-green pb-2 inline-block;
+  }
+
+  h3 {
+    @apply font-mono text-xl font-bold text-hot-pink mt-8 mb-4 uppercase tracking-widest;
+  }
+
+  p {
+    @apply font-body text-lg leading-relaxed text-off-white/90 mb-6;
+  }
+
+  ul,
+  ol {
+    @apply list-inside list-disc space-y-2 mb-6 text-off-white/80 font-mono text-sm;
+  }
+
+  /* Links */
+  a {
+    @apply text-neon-green no-underline border-b border-neon-green/30 transition-all duration-200;
+  }
+
+  a:hover {
+    @apply bg-neon-green text-black border-neon-green;
+  }
+
+  /* Blockquotes */
+  blockquote {
+    @apply border-l-4 border-hot-pink pl-6 italic text-gray-400 my-8;
+  }
+}
+
 /* Glitch Hover Effect */
 @layer utilities {
   .hover-glitch {
