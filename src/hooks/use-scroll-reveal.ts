@@ -16,21 +16,24 @@ export function useScrollReveal(scope: React.RefObject<HTMLElement | null>) {
             const sections = gsap.utils.toArray<HTMLElement>("[data-scroll-section]");
 
             sections.forEach((section) => {
+                // Unmasking Effect: Clip from bottom
+                // Note: Element needs to be visible (autoAlpha: 1) but clipped initially
                 gsap.fromTo(
                     section,
                     {
-                        autoAlpha: 0,
-                        y: 50,
+                        autoAlpha: 1, // Visible but clipped
+                        clipPath: "inset(100% 0 0 0)", // Fully clipped from bottom
+                        y: 20, // Slight movement
                     },
                     {
-                        autoAlpha: 1,
+                        clipPath: "inset(0% 0 0 0)", // Fully revealed
                         y: 0,
-                        duration: 0.8,
+                        duration: 1.0,
                         ease: "power3.out",
                         scrollTrigger: {
                             trigger: section,
-                            start: "top 80%", // Start when top of element hits 80% viewport height
-                            toggleActions: "play none none reverse", // Re-play on enter, reverse on leave back up
+                            start: "top 85%",
+                            toggleActions: "play none none reverse",
                         },
                     }
                 );

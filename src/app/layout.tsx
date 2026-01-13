@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Syne, Space_Mono, Inter } from "next/font/google";
+import { Space_Mono, Inter, Syne } from "next/font/google";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
-
-const syne = Syne({
-  variable: "--font-syne",
-  subsets: ["latin"],
-  weight: "800",
-});
+import { SmoothScroll } from "@/components/smooth-scroll";
 
 const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
   subsets: ["latin"],
   weight: ["400", "700"],
+  variable: "--font-space-mono",
 });
 
 const inter = Inter({
@@ -21,14 +14,15 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "2026 Nicopedia",
-  description: "The next generation wiki experience",
-};
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+});
 
-import { SearchOverlay } from "@/components/search-overlay";
-import { SearchProvider } from "@/components/search-context";
-import { GeometricBackground } from "@/components/geometric-background";
+export const metadata: Metadata = {
+  title: "NICOPEDIA // 2026",
+  description: "A Neo-Brutalist Wiki Experience",
+};
 
 export default function RootLayout({
   children,
@@ -36,19 +30,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${syne.variable} ${spaceMono.variable} ${inter.variable} antialiased min-h-screen flex flex-col bg-deep-void text-off-white font-body selection:bg-neon-green selection:text-black`}
+        className={`${syne.variable} ${spaceMono.variable} ${inter.variable} antialiased min-h-screen bg-deep-void text-off-white font-body selection:bg-neon-green selection:text-black`}
+        suppressHydrationWarning
       >
-        <SearchProvider>
-          <GeometricBackground />
-          <SiteHeader />
-          <SearchOverlay />
-          <main className="flex-1">
-            {children}
-          </main>
-          <SiteFooter />
-        </SearchProvider>
+        <SmoothScroll />
+        {children}
       </body>
     </html>
   );

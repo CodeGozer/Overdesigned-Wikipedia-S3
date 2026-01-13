@@ -12,16 +12,19 @@ export function SiteHeader() {
       data-animate="header-reveal"
     >
       {/* TODO: Insert Page Wipe Animation Here */}
-      <div className="container flex h-14 max-w-screen-2xl items-center mx-auto px-4">
-        <div className="mr-8 hidden md:flex">
-          <div className="relative group">
-            <Link href="/" className="mr-6 flex items-center space-x-2 font-bold text-xl tracking-tight text-indigo-600 dark:text-indigo-400 transition-transform duration-300 group-hover:scale-105">
-              {/* Placeholder for Animated Brand Intro in future */}
-              <span className="brand-text">2026 Nicopedia</span>
-            </Link>
+      <div className="container mx-auto flex h-full max-w-screen-2xl items-center justify-between px-4">
+        {/* Logo / Home Link */}
+        <Link
+          href="/home"
+          className="group relative flex items-center gap-2 overflow-hidden"
+        >
+          <div className="relative z-10 font-display text-2xl font-black tracking-tighter text-off-white transition-colors group-hover:text-neon-green">
+            NICOPEDIA
           </div>
+        </Link>
+        <div className="mr-8 hidden md:flex">
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link href="/" className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch">
+            <Link href="/home" className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch">
               <span className="relative z-10">
                 Home
               </span>

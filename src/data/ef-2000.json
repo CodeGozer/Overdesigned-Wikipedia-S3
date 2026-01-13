@@ -1,0 +1,51 @@
+{
+    "title": "Eurofighter Typhoon",
+    "infobox": {
+        "title": "Eurofighter Typhoon",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Eurofighter_Typhoon_show_flight_at_ILA_2024.jpg/1200px-Eurofighter_Typhoon_show_flight_at_ILA_2024.jpg",
+        "stats": [
+            {
+                "label": "Role",
+                "value": "Multirole Fighter"
+            },
+            {
+                "label": "Origin",
+                "value": "Multi-National"
+            },
+            {
+                "label": "Manufacturer",
+                "value": "Eurofighter Jagdflugzeug GmbH"
+            },
+            {
+                "label": "First Flight",
+                "value": "27 March 1994"
+            },
+            {
+                "label": "Status",
+                "value": "In Service"
+            },
+            {
+                "label": "Top Speed",
+                "value": "Mach 2.0+"
+            },
+            {
+                "label": "Range",
+                "value": "2,900 km"
+            }
+        ]
+    },
+    "sections": [
+        {
+            "heading": "Overview",
+            "content": "<p>The <strong>Eurofighter Typhoon</strong> is a European multinational twin-engine, canard–delta wing, multirole fighter. The Typhoon was designed originally as an air superiority fighter and is manufactured by a consortium of Airbus, BAE Systems and Leonardo that conducts the majority of the project through a joint holding company, Eurofighter Jagdflugzeug GmbH. The NATO Eurofighter and Tornado Management Agency, representing the UK, Germany, Italy and Spain, manages the project and is the prime customer.</p><p>The aircraft is powered by two Eurojet EJ200 engines, each capable of providing up to 90 kN (20,230 lbf) of thrust in afterburner. The Typhoon has high agility at both supersonic and subsonic speeds, achieved through a relaxed stability design and fly-by-wire flight control system.</p>"
+        },
+        {
+            "heading": "Development",
+            "content": "<p>The UK had identified a requirement for a new fighter as early as 1971. A specification, AST 403, issued by the Air Staff in 1972, resulted in a conventional \"tailed\" design known as P.96, which was presented in the late 1970s. While the design would have met the Air Staff's requirements, the UK air industry had reservations, as it appeared to be very similar to the McDonnell Douglas F/A-18 Hornet, which was then well advanced in its development.</p><p>Simultaneously, in 1979, the West German government had a requirement for a new fighter, the TKF-90 concept. This was a delta wing aircraft with forward canard controls and artificial stability. Although the British designers had been working on a similar concept, they had not yet been able to agree on a single design.</p>"
+        },
+        {
+            "heading": "Design",
+            "content": "<p>The Typhoon features a glass cockpit with three multi-function head-down displays (MHDDs), a wide angle head-up display (HUD) with forward-looking infrared (FLIR), voice and throttle and stick (VTAS) controls, a helmet-mounted symbology system (HMSS), a MIDS, a manual data-entry facility (MDEF) located on the left glareshield and a fully integrated aircraft warning system with a dedicated warning panel. Reversionary flying instruments, lit by LEDs, are located under a hinged right glareshield.</p>"
+        }
+    ]
+}
