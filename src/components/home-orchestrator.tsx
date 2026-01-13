@@ -50,7 +50,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
 
         try {
             // 1. Generate the expanded grid based on inputs
-            const gridResults = generateGrid(interests);
+            const gridResults = await generateGrid(interests);
 
             // 2. Fetch data for new items in parallel
             const newArticles = await Promise.all(
@@ -58,8 +58,11 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     // Normalize title for URL
                     const slug = result.title.replace(/ /g, '_');
 
-                    // Fetch summary from Wiki API
-                    const summary = await getWikiSummary(result.title);
+                    // Use pre-fetched summary if available (from AI discovery), else fetch fresh
+                    let summary = result.summary;
+                    if (!summary) {
+                        summary = await getWikiSummary(result.title);
+                    }
 
                     return {
                         slug: slug,
@@ -96,6 +99,18 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     </div>
 
                     <FinderConsole onSearch={handleSearch} />
+
+                    {/* Loading Overlay */}
+                    {isCalculating && (
+                        <div className="absolute inset-0 z-[60] bg-deep-void/90 flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+                            <div className="text-4xl md:text-6xl font-display font-black text-transparent text-stroke animate-pulse uppercase tracking-tighter">
+                                Analysing...
+                            </div>
+                            <div className="mt-4 font-mono text-xs text-neon-green tracking-[0.5em] animate-marquee whitespace-nowrap overflow-hidden w-64 text-center">
+                                /// CONNECTING_TO_WIKIPEDIA_API /// SEMANTIC_MATCHING /// VECTOR_SEARCH ///
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
