@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import gsap from 'gsap';
 
 interface FinderConsoleProps {
-    onSearch: (interests: string[], depth: number) => void;
+    onSearch: (interests: string[], depth: number, mode: 'PARALLEL' | 'SYNTHESIS') => void;
+    onTutorial?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -13,11 +14,12 @@ const SUGGESTIONS = [
     "Cybernetics", "Glitch Art", "Keyboards", "Typography", "Synthwave"
 ];
 
-export function FinderConsole({ onSearch }: FinderConsoleProps) {
+export function FinderConsole({ onSearch, onTutorial }: FinderConsoleProps) {
     const [inputValue, setInputValue] = useState("");
     const [interests, setInterests] = useState<string[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [signalDepth, setSignalDepth] = useState(2); // 1=Surface, 2=Hybrid, 3=Deep
+    const [correlationMode, setCorrelationMode] = useState<'PARALLEL' | 'SYNTHESIS'>('PARALLEL');
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +52,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
 
         // Animation sequence before searching
         const tl = gsap.timeline({
-            onComplete: () => onSearch(interests, signalDepth)
+            onComplete: () => onSearch(interests, signalDepth, correlationMode)
         });
 
         tl.to(".console-ui", {
@@ -63,7 +65,22 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
     };
 
     return (
-        <div ref={containerRef} className="relative z-50 flex flex-col items-center justify-center w-full min-h-[60vh] text-center p-4">
+        <div ref={containerRef} className="relative z-40 flex flex-col items-center justify-center w-full min-h-[60vh] text-center p-4">
+
+            {/* Guide Button (Top Right) */}
+            <div className="absolute top-0 right-0 p-4 console-ui">
+                <button
+                    onClick={onTutorial}
+                    className="group flex items-center gap-2 text-xs font-mono text-neon-green/50 hover:text-neon-green transition-colors uppercase tracking-widest"
+                >
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
+                        /// INITIALIZE_GUIDE
+                    </span>
+                    <span className="border border-neon-green/30 px-2 py-1 group-hover:bg-neon-green/10">
+                        [?]
+                    </span>
+                </button>
+            </div>
 
             {/* Header / Label */}
             <div className="console-ui font-mono text-xs text-neon-green/80 tracking-[0.3em] uppercase mb-8 animate-pulse">
@@ -90,35 +107,74 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
                 <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-neon-green translate-x-1 translate-y-1" />
             </div>
 
-            {/* Signal Depth Slider */}
-            <div id="tutorial-target-slider" className="console-ui mt-8 w-full max-w-lg">
-                <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest mb-2">
-                    <span className={cn("transition-colors", signalDepth === 1 ? "text-neon-green" : "text-white/40")}>
-                        Surface
-                    </span>
-                    <span className={cn("transition-colors", signalDepth === 2 ? "text-neon-green" : "text-white/40")}>
-                        Hybrid
-                    </span>
-                    <span className={cn("transition-colors", signalDepth === 3 ? "text-hot-pink" : "text-white/40")}>
-                        Deep Void
-                    </span>
+            <div className="flex flex-col md:flex-row gap-8 items-start justify-center w-full max-w-4xl mt-12">
+
+                {/* Signal Depth Slider */}
+                <div id="tutorial-target-slider" className="console-ui w-full max-w-md">
+                    <div className="text-[10px] font-mono uppercase tracking-widest mb-4 text-left text-gray-500">
+                        /// SIGNAL_DEPTH
+                    </div>
+
+                    <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest mb-2">
+                        <span className={cn("transition-colors", signalDepth === 1 ? "text-neon-green" : "text-white/40")}>
+                            Surface
+                        </span>
+                        <span className={cn("transition-colors", signalDepth === 2 ? "text-neon-green" : "text-white/40")}>
+                            Hybrid
+                        </span>
+                        <span className={cn("transition-colors", signalDepth === 3 ? "text-hot-pink" : "text-white/40")}>
+                            Deep Void
+                        </span>
+                    </div>
+                    <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="1"
+                        value={signalDepth}
+                        onChange={(e) => setSignalDepth(parseInt(e.target.value))}
+                        className={cn(
+                            "w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-neon-green hover:accent-neon-blue transition-all",
+                            signalDepth === 3 && "accent-hot-pink hover:accent-purple-500"
+                        )}
+                    />
+                    <div className="mt-2 font-mono text-xs text-left uppercase tracking-[0.2em] h-4">
+                        {signalDepth === 1 && <span className="text-neon-green">/// GLOBAL_DATABASE</span>}
+                        {signalDepth === 2 && <span className="text-white">/// BALANCED_MIX</span>}
+                        {signalDepth === 3 && <span className="text-hot-pink animate-pulse">/// UNFILTERED_LORE</span>}
+                    </div>
                 </div>
-                <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={signalDepth}
-                    onChange={(e) => setSignalDepth(parseInt(e.target.value))}
-                    className={cn(
-                        "w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-neon-green hover:accent-neon-blue transition-all",
-                        signalDepth === 3 && "accent-hot-pink hover:accent-purple-500"
-                    )}
-                />
-                <div className="mt-2 font-mono text-xs text-center uppercase tracking-[0.2em] h-4">
-                    {signalDepth === 1 && <span className="text-neon-green">/// SIGNAL: GLOBAL_DATABASE // STRICT_PROVENANCE</span>}
-                    {signalDepth === 2 && <span className="text-white">/// SIGNAL: BALANCED_MIX // STANDARD_PROTOCOL</span>}
-                    {signalDepth === 3 && <span className="text-hot-pink animate-pulse">/// SIGNAL: HIVE_MIND // UNFILTERED_LORE</span>}
+
+                {/* Correlation Mode Switch */}
+                <div id="tutorial-target-mode" className="console-ui w-full max-w-xs">
+                    <div className="text-[10px] font-mono uppercase tracking-widest mb-4 text-left text-gray-500">
+                        /// PROCESSING_MODE
+                    </div>
+                    <div className="flex bg-white/5 rounded p-1 border border-white/10">
+                        <button
+                            onClick={() => setCorrelationMode('PARALLEL')}
+                            className={cn(
+                                "flex-1 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2",
+                                correlationMode === 'PARALLEL' ? "bg-neon-green text-black shadow-[2px_2px_0px_#000]" : "text-white/40 hover:text-white hover:bg-white/10"
+                            )}
+                            title="Analyze vectors independently"
+                        >
+                            <span>|| PARALLEL</span>
+                        </button>
+                        <button
+                            onClick={() => setCorrelationMode('SYNTHESIS')}
+                            className={cn(
+                                "flex-1 py-2 text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2",
+                                correlationMode === 'SYNTHESIS' ? "bg-hot-pink text-black shadow-[2px_2px_0px_#000]" : "text-white/40 hover:text-white hover:bg-white/10"
+                            )}
+                            title="Find the intersection of all vectors"
+                        >
+                            <span>∩ SYNTHESIS</span>
+                        </button>
+                    </div>
+                    <div className="mt-2 text-left font-mono text-[10px] text-gray-400">
+                        {correlationMode === 'PARALLEL' ? "> RUNNING INDEPENDENT STREAMS" : "> CROSS-VECTOR INTERSECTION"}
+                    </div>
                 </div>
             </div>
 
@@ -159,7 +215,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
             </div>
 
             {/* Suggestions Ticker */}
-            <div className="console-ui mt-16 w-full max-w-4xl overflow-hidden relative">
+            <div id="tutorial-target-suggestions" className="console-ui mt-16 w-full max-w-4xl overflow-hidden relative">
                 <div className="text-white/40 font-mono text-[10px] mb-2 uppercase tracking-widest">
                     /// SUGGESTED_VECTORS
                 </div>

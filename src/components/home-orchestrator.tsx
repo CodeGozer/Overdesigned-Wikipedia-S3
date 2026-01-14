@@ -47,6 +47,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
     const [isCalculating, setIsCalculating] = useState(false);
     const [isRestoring, setIsRestoring] = useState(true); // Start true to check storage
     const [showTutorial, setShowTutorial] = useState(false);
+    const [searchMode, setSearchMode] = useState<'PARALLEL' | 'SYNTHESIS'>('PARALLEL');
 
     // Persistence Logic (Back Button Fix) & Tutorial Check
     React.useEffect(() => {
@@ -57,7 +58,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                 setShowTutorial(true);
             }
 
-            // Check Vectors
+            // Check Vectors (We don't persist mode yet, default to Parallel)
             const savedVectors = localStorage.getItem('nicopedia_vectors');
             if (savedVectors) {
                 try {
@@ -65,7 +66,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         // Found saved state! Skip console and restore grid.
                         console.log("Found persisted session:", parsed);
-                        await handleSearch(parsed, 2, false); // Default depth 2, Don't save again recursively
+                        await handleSearch(parsed, 2, 'PARALLEL', false); // Default depth 2, Parallel, Don't save again recursively
                         setIsRestoring(false);
                         return;
                     }
@@ -81,9 +82,10 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
         checkPersistence();
     }, []);
 
-    const handleSearch = async (interests: string[], depth: number = 2, saveToStorage = true) => {
+    const handleSearch = async (interests: string[], depth: number = 2, correlationMode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL', saveToStorage = true) => {
         setIsCalculating(true);
         setUserInterests(interests);
+        setSearchMode(correlationMode);
 
         if (saveToStorage) {
             localStorage.setItem('nicopedia_vectors', JSON.stringify(interests));
@@ -91,7 +93,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
 
         try {
             // 1. Generate the expanded grid based on inputs (Hybrid: Wiki + Fandom)
-            const gridResults = await generateGrid(interests, depth);
+            const gridResults = await generateGrid(interests, depth, correlationMode);
 
             // 2. Map results to visual items
             const newArticles = await Promise.all(
@@ -119,10 +121,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                         color = 'hot-pink'; // or gold/purple? Let's stick to hot-pink for Lore
                     } else {
                         category = 'WIKI // DATA';
-                        color = 'cyan'; // Differentiates Reality (Wiki) from Lore (Fandom) from User (Green)
-                        // Actually, request said: REALITY = Neon Green (or similar to user?), LORE = Hot Pink.
-                        // Let's make user Neon Green, Wiki Cyan/Blue (Data), Fandom Pink (Lore).
-                        color = 'neon-blue';
+                        color = 'neon-blue'; // Data
                     }
 
                     return {
@@ -160,8 +159,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
 
     return (
         <div className="relative w-full min-h-screen">
-            {/* System Tutorial Overlay */}
-            {showTutorial && <SystemTutorial onClose={handleTutorialClose} />}
+
 
             {/* Loading/Restoring Overlay - prevents flash of console */}
             {isRestoring && (
@@ -186,7 +184,10 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                         <div className="absolute bottom-10 right-10 w-96 h-96 border border-white/5 rotate-45" />
                     </div>
 
-                    <FinderConsole onSearch={(interests, depth) => handleSearch(interests, depth, true)} />
+                    <FinderConsole
+                        onSearch={(interests, depth, correlationMode) => handleSearch(interests, depth, correlationMode, true)}
+                        onTutorial={() => setShowTutorial(true)}
+                    />
 
                     {/* Loading Overlay */}
                     {isCalculating && (
@@ -195,7 +196,10 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                 Analysing...
                             </div>
                             <div className="mt-4 font-mono text-xs text-neon-green tracking-[0.5em] animate-marquee whitespace-nowrap overflow-hidden w-64 text-center">
-                                /// CONNECTING_TO_WIKIPEDIA_API /// SEMANTIC_MATCHING /// VECTOR_SEARCH ///
+                                {searchMode === 'SYNTHESIS'
+                                    ? "/// CALCULATING_CROSS_VECTOR_INTERSECTION /// DETECTING_OVERLAP ///"
+                                    : "/// RUNNING_DUAL_CORE_ANALYSIS /// INDEPENDENT_STREAMS ///"
+                                }
                             </div>
                         </div>
                     )}
@@ -232,12 +236,6 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                             className="hidden md:block px-3 py-1 text-xs font-mono font-bold text-red-500 border border-red-500/20 hover:bg-red-500/10 transition-colors uppercase tracking-widest"
                                         >
                                             [RESET]
-                                        </button>
-                                        <button
-                                            onClick={() => setShowTutorial(true)}
-                                            className="hidden md:block px-3 py-1 text-xs font-mono font-bold text-neon-green border border-neon-green/20 hover:bg-neon-green/10 transition-colors uppercase tracking-widest"
-                                        >
-                                            [?]
                                         </button>
                                     </div>
                                 </div>
@@ -282,6 +280,8 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     </HeroAnimator >
                 </div >
             )}
+            {/* System Tutorial Overlay - Render last to overlap */}
+            {showTutorial && <SystemTutorial onClose={handleTutorialClose} />}
         </div >
     );
 }

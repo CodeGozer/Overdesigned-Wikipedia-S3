@@ -74,6 +74,38 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
                 });
             }
 
+            // 4. Correlation Mode
+            const modeEl = document.getElementById('tutorial-target-mode');
+            if (modeEl) {
+                const rect = modeEl.getBoundingClientRect();
+                foundTargets.push({
+                    id: 'tutorial-target-mode',
+                    label: '/// SELECT PROCESSING MODE',
+                    description: 'SEPARATE OR BLENDED STREAMS',
+                    x: rect.left,
+                    y: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    side: 'right'
+                });
+            }
+
+            // 5. Suggestions
+            const suggestionsEl = document.getElementById('tutorial-target-suggestions');
+            if (suggestionsEl) {
+                const rect = suggestionsEl.getBoundingClientRect();
+                foundTargets.push({
+                    id: 'tutorial-target-suggestions',
+                    label: '/// SUGGESTED PRESETS',
+                    description: 'RAPID INHERITANCE VECTORS',
+                    x: rect.left,
+                    y: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    side: 'bottom'
+                });
+            }
+
             setTargets(foundTargets);
         };
 
@@ -108,7 +140,7 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
     return (
         <div className="fixed inset-0 z-[100] font-mono select-none tutorial-overlay">
             {/* Dimming Layer */}
-            <div className="absolute inset-0 bg-deep-void/90 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
             {/* Canvas / SVG Layer */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none">

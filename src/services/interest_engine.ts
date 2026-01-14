@@ -179,16 +179,17 @@ async function fetchFandomMoreLike(baseUrl: string, topic: string, limit: number
 
 // --- MAIN LOGIC ---
 
-export async function getHybridRecommendations(userInputs: string[], depth: number = 2): Promise<InterestResult[]> {
+export async function getHybridRecommendations(
+    userInputs: string[],
+    depth: number = 2,
+    mode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL'
+): Promise<InterestResult[]> {
     const results: InterestResult[] = [];
     const usedTitles = new Set<string>();
 
     const targetSize = 10;
 
     // Determine rations based on depth
-    // Depth 1 (Surface): 8 Wiki / 2 Fandom
-    // Depth 2 (Hybrid): 5 Wiki / 5 Fandom (Balanced)
-    // Depth 3 (Deep): 2 Wiki / 8 Fandom
     let wikiLimit = 5;
     let fandomLimit = 5;
 
@@ -200,6 +201,71 @@ export async function getHybridRecommendations(userInputs: string[], depth: numb
         fandomLimit = 8;
     }
 
+    // --- SYNTHESIS MODE LOGIC ---
+    if (mode === 'SYNTHESIS' && userInputs.length > 1) {
+        const combinedQuery = userInputs.join(' ');
+        console.log(`[SYNTHESIS] Attempting cross-vector search: "${combinedQuery}"`);
+
+        // 1. Try to find a Wikipedia page for the combined string (e.g., "Star Wars Lego")
+        const synthesisResults = await fetchWikiMoreLike(combinedQuery, wikiLimit);
+
+        // 2. Try Fandom for the combined string
+        // We use the first term as the likely "base" fandom, or try to detect from combined
+        const fandomUrl = await findFandomWiki(userInputs[0]); // Heuristic: Use primary vector for finding the wiki
+        let synthesisFandom: WikiPage[] = [];
+
+        if (fandomUrl) {
+            synthesisFandom = await fetchFandomMoreLike(fandomUrl, combinedQuery, fandomLimit);
+        }
+
+        const combinedResults = [...synthesisResults, ...synthesisFandom];
+
+        if (combinedResults.length > 0) {
+            // SUCCESS: We found intersection data!
+            // Map them
+            combinedResults.forEach(page => {
+                if (!usedTitles.has(page.title) && !page.title.includes("(disambiguation)")) {
+                    results.push({
+                        title: page.title,
+                        type: 'AI_DISCOVERY',
+                        source: synthesisResults.includes(page) ? 'WIKIPEDIA' : 'FANDOM',
+                        apiBaseUrl: synthesisResults.includes(page) ? undefined : fandomUrl!,
+                        summary: {
+                            title: page.title,
+                            extract: page.extract,
+                            thumbnail: page.thumbnail
+                        }
+                    });
+                    usedTitles.add(page.title);
+                }
+            });
+
+            // Also add the original inputs as "User Selected" anchors at the top
+            // So user knows what created this mess
+            for (const input of userInputs) {
+                const canonical = await findCanonicalPage(input);
+                const title = canonical ? canonical.title : input;
+                if (!usedTitles.has(title)) {
+                    results.unshift({ // Add to start
+                        title: title,
+                        type: 'USER_SELECTED',
+                        source: 'WIKIPEDIA'
+                    });
+                    usedTitles.add(title);
+                }
+            }
+
+            return results.slice(0, 12);
+        } else {
+            // FAIL: No intersection found. Fallback to Parallel.
+            console.warn("[SYNTHESIS] No correlation found. Reverting to PARALLEL.");
+            // We continue execution below...
+            // In a real app we might return a special flag to show a toast.
+        }
+    }
+
+
+    // --- PARALLEL MODE LOGIC (Default & Fallback) ---
     for (const input of userInputs) {
         // 0. Add User Input (Direct Hit)
         const canonical = await findCanonicalPage(input);
