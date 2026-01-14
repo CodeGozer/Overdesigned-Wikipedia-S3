@@ -47,7 +47,7 @@ export function BentoGrid({
     return (
         <div
             ref={containerRef}
-            className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[200px] [content-visibility:auto] [contain-intrinsic-size:200px]"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 auto-rows-[200px] [content-visibility:auto] [contain-intrinsic-size:200px]"
         >
             {children}
         </div>

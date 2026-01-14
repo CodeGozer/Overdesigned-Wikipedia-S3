@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import gsap from 'gsap';
 
 interface FinderConsoleProps {
-    onSearch: (interests: string[]) => void;
+    onSearch: (interests: string[], depth: number) => void;
 }
 
 const SUGGESTIONS = [
@@ -17,6 +17,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
     const [inputValue, setInputValue] = useState("");
     const [interests, setInterests] = useState<string[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [signalDepth, setSignalDepth] = useState(2); // 1=Surface, 2=Hybrid, 3=Deep
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +50,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
 
         // Animation sequence before searching
         const tl = gsap.timeline({
-            onComplete: () => onSearch(interests)
+            onComplete: () => onSearch(interests, signalDepth)
         });
 
         tl.to(".console-ui", {
@@ -70,7 +71,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
             </div>
 
             {/* Glowing Input Field */}
-            <div className="console-ui relative w-full max-w-2xl group">
+            <div id="tutorial-target-input" className="console-ui relative w-full max-w-2xl group">
                 <input
                     ref={inputRef}
                     type="text"
@@ -78,7 +79,7 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="ENTER INTEREST_01..."
-                    className="w-full bg-deep-void/80 border-2 border-white text-white font-display text-3xl md:text-5xl uppercase p-6 md:p-8 outline-none placeholder:text-white/20 focus:border-neon-green transition-all duration-300 shadow-[0_0_20px_rgba(0,255,0,0)] focus:shadow-[0_0_40px_rgba(0,255,0,0.2)] tracking-tighter"
+                    className="w-full bg-deep-void/80 border-2 border-white text-white font-display text-2xl md:text-5xl uppercase p-6 md:p-8 outline-none placeholder:text-white/20 focus:border-neon-green transition-all duration-300 shadow-[0_0_20px_rgba(0,255,0,0)] focus:shadow-[0_0_40px_rgba(0,255,0,0.2)] tracking-tighter"
                     autoFocus
                 />
 
@@ -89,8 +90,40 @@ export function FinderConsole({ onSearch }: FinderConsoleProps) {
                 <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-neon-green translate-x-1 translate-y-1" />
             </div>
 
+            {/* Signal Depth Slider */}
+            <div id="tutorial-target-slider" className="console-ui mt-8 w-full max-w-lg">
+                <div className="flex justify-between text-[10px] font-mono uppercase tracking-widest mb-2">
+                    <span className={cn("transition-colors", signalDepth === 1 ? "text-neon-green" : "text-white/40")}>
+                        Surface
+                    </span>
+                    <span className={cn("transition-colors", signalDepth === 2 ? "text-neon-green" : "text-white/40")}>
+                        Hybrid
+                    </span>
+                    <span className={cn("transition-colors", signalDepth === 3 ? "text-hot-pink" : "text-white/40")}>
+                        Deep Void
+                    </span>
+                </div>
+                <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="1"
+                    value={signalDepth}
+                    onChange={(e) => setSignalDepth(parseInt(e.target.value))}
+                    className={cn(
+                        "w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-neon-green hover:accent-neon-blue transition-all",
+                        signalDepth === 3 && "accent-hot-pink hover:accent-purple-500"
+                    )}
+                />
+                <div className="mt-2 font-mono text-xs text-center uppercase tracking-[0.2em] h-4">
+                    {signalDepth === 1 && <span className="text-neon-green">/// SIGNAL: GLOBAL_DATABASE // STRICT_PROVENANCE</span>}
+                    {signalDepth === 2 && <span className="text-white">/// SIGNAL: BALANCED_MIX // STANDARD_PROTOCOL</span>}
+                    {signalDepth === 3 && <span className="text-hot-pink animate-pulse">/// SIGNAL: HIVE_MIND // UNFILTERED_LORE</span>}
+                </div>
+            </div>
+
             {/* Slot System */}
-            <div className="console-ui mt-12 flex flex-wrap justify-center gap-4 w-full max-w-3xl">
+            <div id="tutorial-target-slots" className="console-ui mt-12 flex flex-wrap justify-center gap-4 w-full max-w-3xl">
                 {/* Render Filled Slots */}
                 {interests.map((interest, idx) => (
                     <div

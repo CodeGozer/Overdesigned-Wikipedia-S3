@@ -10,6 +10,7 @@ import { KineticMarquee } from './kinetic-marquee';
 import { EntryCard } from './entry-card';
 import { generateGrid } from '@/services/interest_engine';
 import { getWikiSummary } from '@/services/wiki';
+import { SystemTutorial } from './system-tutorial';
 
 // Types for fetched data
 interface ArticleSummary {
@@ -44,14 +45,53 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
     const [userInterests, setUserInterests] = useState<string[]>([]);
     const [displayedArticles, setDisplayedArticles] = useState<InterestItem[]>(initialArticles);
     const [isCalculating, setIsCalculating] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(true); // Start true to check storage
+    const [showTutorial, setShowTutorial] = useState(false);
 
-    const handleSearch = async (interests: string[]) => {
+    // Persistence Logic (Back Button Fix) & Tutorial Check
+    React.useEffect(() => {
+        const checkPersistence = async () => {
+            // Check Tutorial
+            const hasSeenTutorial = localStorage.getItem('nicopedia_tutorial_seen');
+            if (!hasSeenTutorial) {
+                setShowTutorial(true);
+            }
+
+            // Check Vectors
+            const savedVectors = localStorage.getItem('nicopedia_vectors');
+            if (savedVectors) {
+                try {
+                    const parsed = JSON.parse(savedVectors);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        // Found saved state! Skip console and restore grid.
+                        console.log("Found persisted session:", parsed);
+                        await handleSearch(parsed, 2, false); // Default depth 2, Don't save again recursively
+                        setIsRestoring(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse saved vectors", e);
+                }
+            }
+            // If no valid state, show console
+            setIsRestoring(false);
+            setMode('CONSOLE');
+        };
+
+        checkPersistence();
+    }, []);
+
+    const handleSearch = async (interests: string[], depth: number = 2, saveToStorage = true) => {
         setIsCalculating(true);
         setUserInterests(interests);
 
+        if (saveToStorage) {
+            localStorage.setItem('nicopedia_vectors', JSON.stringify(interests));
+        }
+
         try {
             // 1. Generate the expanded grid based on inputs (Hybrid: Wiki + Fandom)
-            const gridResults = await generateGrid(interests);
+            const gridResults = await generateGrid(interests, depth);
 
             // 2. Map results to visual items
             const newArticles = await Promise.all(
@@ -107,11 +147,38 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
         }
     };
 
+    const resetProfile = () => {
+        localStorage.removeItem('nicopedia_vectors');
+        setUserInterests([]);
+        setMode('CONSOLE');
+    };
+
+    const handleTutorialClose = () => {
+        setShowTutorial(false);
+        localStorage.setItem('nicopedia_tutorial_seen', 'true');
+    };
+
     return (
         <div className="relative w-full min-h-screen">
+            {/* System Tutorial Overlay */}
+            {showTutorial && <SystemTutorial onClose={handleTutorialClose} />}
+
+            {/* Loading/Restoring Overlay - prevents flash of console */}
+            {isRestoring && (
+                <div className="absolute inset-0 z-[100] bg-deep-void flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="font-display text-4xl font-black text-transparent text-stroke animate-pulse">
+                            RECALIBRATING...
+                        </div>
+                        <div className="font-mono text-xs text-neon-green tracking-[0.2em] animate-marquee">
+                            /// RESTORING_SESSION_VECTORS ///
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* MODE: CONSOLE */}
-            {mode === 'CONSOLE' && (
+            {mode === 'CONSOLE' && !isRestoring && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-deep-void">
                     {/* Background Ambient Elements (Optional, reused from Splash or similar) */}
                     <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -119,7 +186,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                         <div className="absolute bottom-10 right-10 w-96 h-96 border border-white/5 rotate-45" />
                     </div>
 
-                    <FinderConsole onSearch={handleSearch} />
+                    <FinderConsole onSearch={(interests, depth) => handleSearch(interests, depth, true)} />
 
                     {/* Loading Overlay */}
                     {isCalculating && (
@@ -139,7 +206,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             {/* We render this but hide it or animate it in.
                 Actually, simpler to conditionally render so we get the mounting animation of HeroAnimator.
             */}
-            {mode === 'DASHBOARD' && (
+            {mode === 'DASHBOARD' && !isRestoring && (
                 <div className="animate-in fade-in duration-1000 slide-in-from-bottom-10">
                     <KineticMarquee />
 
@@ -157,9 +224,34 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                             /// FILTERS: [{userInterests.join(', ')}]
                                         </span>
                                     </div>
-                                    <RandomButton />
+                                    <div className="flex gap-2">
+                                        <RandomButton />
+                                        {/* Desktop Reset Button */}
+                                        <button
+                                            onClick={resetProfile}
+                                            className="hidden md:block px-3 py-1 text-xs font-mono font-bold text-red-500 border border-red-500/20 hover:bg-red-500/10 transition-colors uppercase tracking-widest"
+                                        >
+                                            [RESET]
+                                        </button>
+                                        <button
+                                            onClick={() => setShowTutorial(true)}
+                                            className="hidden md:block px-3 py-1 text-xs font-mono font-bold text-neon-green border border-neon-green/20 hover:bg-neon-green/10 transition-colors uppercase tracking-widest"
+                                        >
+                                            [?]
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* Mobile FAB Reset Button */}
+                            <button
+                                onClick={resetProfile}
+                                className="md:hidden fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-red-500/10 border border-red-500 text-red-500 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 transition-transform"
+                                aria-label="Reset Profile"
+                            >
+                                <span className="text-xl font-bold">×</span>
+                            </button>
+
 
                             <BentoGrid disableAnimation={false}>
                                 {displayedArticles.map((item, index) => {
@@ -187,9 +279,9 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                 })}
                             </BentoGrid>
                         </div>
-                    </HeroAnimator>
-                </div>
+                    </HeroAnimator >
+                </div >
             )}
-        </div>
+        </div >
     );
 }

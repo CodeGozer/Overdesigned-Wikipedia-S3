@@ -110,15 +110,36 @@ export function SiteHeader() {
           </nav>
         </div>
 
-        {/* Mobile View Placeholder */}
-        <div className="md:hidden flex items-center gap-4">
-          <Link href="/home" className="font-bold text-lg text-indigo-600">Nicopedia</Link>
-          <button
-            onClick={openSearch}
-            className="text-sm font-mono"
-          >
-            [SEARCH]
-          </button>
+        {/* Mobile View */}
+        <div className="md:hidden flex items-center justify-between w-full">
+          <Link href="/home" className="group flex items-center gap-2">
+            <div className="font-display text-xl font-black tracking-tighter text-off-white transition-colors group-hover:text-neon-green">
+              NICOPEDIA
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            {/* Mobile Random Button */}
+            <button
+              onClick={handleRandomClick}
+              disabled={isRandomLoading}
+              className="text-gray-400 hover:text-neon-green transition-colors"
+              aria-label="Random Article"
+            >
+              {isRandomLoading ? (
+                <span className="animate-spin block">⟳</span>
+              ) : (
+                <span className="text-xl">🎲</span> // Simple icon for now, or use SVG
+              )}
+            </button>
+
+            <button
+              onClick={openSearch}
+              className="text-sm font-mono text-neon-green hover:text-neon-blue transition-colors"
+            >
+              [SEARCH]
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">

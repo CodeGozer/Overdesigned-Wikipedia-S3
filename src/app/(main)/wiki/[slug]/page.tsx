@@ -32,9 +32,13 @@ export default async function WikiPage({ params, searchParams }: PageProps) {
     }
 
     // Map Summary Data to Infobox Stats
+    // Map Summary Data to Infobox Stats
+    const sourceLabel = apiBaseUrl ? "Fandom API" : "Wikipedia API";
+    const typeLabel = apiBaseUrl ? (summary.type || "Fandom Article") : (summary.type || "Wiki Article");
+
     const infoboxStats = [
-        { label: "Type", value: summary.type || "Article" },
-        { label: "Source", value: "Wikipedia API" },
+        { label: "Type", value: typeLabel },
+        { label: "Source", value: sourceLabel },
         { label: "Lang", value: summary.lang || "EN" },
         ...(summary.description ? [{ label: "Desc", value: summary.description }] : [])
     ];

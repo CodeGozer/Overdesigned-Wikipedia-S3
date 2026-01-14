@@ -179,16 +179,26 @@ async function fetchFandomMoreLike(baseUrl: string, topic: string, limit: number
 
 // --- MAIN LOGIC ---
 
-export async function getHybridRecommendations(userInputs: string[]): Promise<InterestResult[]> {
+export async function getHybridRecommendations(userInputs: string[], depth: number = 2): Promise<InterestResult[]> {
     const results: InterestResult[] = [];
     const usedTitles = new Set<string>();
 
-    const targetSize = 10; // Request says "Result: A grid of 10 items"
+    const targetSize = 10;
 
-    // Process inputs one by one (or just the last one/main one? Prompt says "topic" singular in function signature example,
-    // but prompts says "userInputs" in step 4 earlier. But this prompt specifically says 
-    // "Function `getHybridRecommendations(topic, count)`". 
-    // Let's stick to handling the input array but focus heavily on the first/main topic for the "Deep Dive".
+    // Determine rations based on depth
+    // Depth 1 (Surface): 8 Wiki / 2 Fandom
+    // Depth 2 (Hybrid): 5 Wiki / 5 Fandom (Balanced)
+    // Depth 3 (Deep): 2 Wiki / 8 Fandom
+    let wikiLimit = 5;
+    let fandomLimit = 5;
+
+    if (depth === 1) {
+        wikiLimit = 8;
+        fandomLimit = 2;
+    } else if (depth === 3) {
+        wikiLimit = 2;
+        fandomLimit = 8;
+    }
 
     for (const input of userInputs) {
         // 0. Add User Input (Direct Hit)
@@ -205,14 +215,12 @@ export async function getHybridRecommendations(userInputs: string[]): Promise<In
                     extract: canonical.extract,
                     thumbnail: canonical.thumbnail
                 } : undefined
-                // Default Wikipedia, no need to set apiBaseUrl explicitly if we treat null/undefined as Wiki
             });
             usedTitles.add(title);
         }
 
-        // STEP A: Wikipedia Search (The Anchor) - REALITY
-        // Fetch 3 items
-        const wikiResults = await fetchWikiMoreLike(title, 3);
+        // STEP A: Wikipedia Search (The Anchor)
+        const wikiResults = await fetchWikiMoreLike(title, wikiLimit);
         wikiResults.forEach(page => {
             if (!usedTitles.has(page.title) && !page.title.includes("(disambiguation)")) {
                 results.push({
@@ -229,19 +237,19 @@ export async function getHybridRecommendations(userInputs: string[]): Promise<In
             }
         });
 
-        // STEP B: Fandom Search (The Deep Dive) - LORE
+        // STEP B: Fandom Search (The Deep Dive)
         const fandomUrl = await findFandomWiki(input);
 
         if (fandomUrl) {
-            // Found a specific wiki! Fetch 7 items.
-            const fandomResults = await fetchFandomMoreLike(fandomUrl, input, 7);
+            // Found a specific wiki!
+            const fandomResults = await fetchFandomMoreLike(fandomUrl, input, fandomLimit);
             fandomResults.forEach(page => {
                 if (!usedTitles.has(page.title)) {
                     results.push({
                         title: page.title,
                         type: 'AI_DISCOVERY',
                         source: 'FANDOM',
-                        apiBaseUrl: fandomUrl, // Store key info!
+                        apiBaseUrl: fandomUrl,
                         summary: {
                             title: page.title,
                             extract: page.extract,
@@ -252,8 +260,10 @@ export async function getHybridRecommendations(userInputs: string[]): Promise<In
                 }
             });
         } else {
-            // No Fandom found. Fetch 7 MORE items from Wikipedia.
-            const moreWiki = await fetchWikiMoreLike(title, 7);
+            // No Fandom found. Fill the gap with more Wikipedia if needed.
+            // If we are in Deep Mode but no Fandom found, we just do more Wiki but maybe warn?
+            // For now, just fill up.
+            const moreWiki = await fetchWikiMoreLike(title, fandomLimit);
             moreWiki.forEach(page => {
                 if (!usedTitles.has(page.title)) {
                     results.push({
@@ -272,21 +282,15 @@ export async function getHybridRecommendations(userInputs: string[]): Promise<In
         }
     }
 
-    // Shuffle results (excluding the User Selected ones which stay at top ideally, 
-    // or request says "ensure the first result is always a Direct Hit from the main source")
-    // Let's separate user selected and discovery
+    // Shuffle results
     const userSelected = results.filter(r => r.type === 'USER_SELECTED');
     const discovery = results.filter(r => r.type === 'AI_DISCOVERY');
 
-    // Shuffle discovery
+    // Sort logic? If Deep mode, maybe prioritize Fandom items in the shuffle?
+    // For now, pure shuffle is fine as the Quantity ratio does the work.
     const shuffledDiscovery = discovery.sort(() => 0.5 - Math.random());
 
-    // Combine, limiting total to targetSize (plus user inputs? Prompt says "Result: A grid of 10 items")
-    // If we have multiple user inputs, we might exceed 10. Let's just return what we have but capped if needed.
-    // Actually prompt implying a Single Topic Dive "If I type Tanks...".
-    // I will return all user inputs + shuffled discovery up to target.
-
-    return [...userSelected, ...shuffledDiscovery].slice(0, 12); // slightly flexible cap
+    return [...userSelected, ...shuffledDiscovery].slice(0, 12);
 }
 
 // Alias for compatibility if needed, but we replace the export

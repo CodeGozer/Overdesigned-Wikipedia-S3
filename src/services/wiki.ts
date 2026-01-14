@@ -1,5 +1,12 @@
+import { sanitizeSummary } from '@/lib/text-sanitizer';
+
 const REST_API_BASE = "https://en.wikipedia.org/api/rest_v1/";
 const ACTION_API_BASE = "https://en.wikipedia.org/w/api.php";
+
+const HEADERS = {
+    "User-Agent": "Nicopedia/1.0 (nicokornuijt@example.com) NextJS-Education-Project",
+    "Accept": "application/json"
+};
 
 export interface WikiSummary {
     title: string;
@@ -13,16 +20,14 @@ export interface WikiSummary {
         desktop: {
             page: string;
         };
+        mobile: {
+            page: string;
+        };
     };
     description?: string;
     type?: string;
     lang?: string;
 }
-
-const HEADERS = {
-    "User-Agent": "Nicopedia/1.0 (nicokornuijt@example.com) NextJS-Education-Project",
-    "Accept": "application/json"
-};
 
 export interface WikiSearchResult {
     title: string;
@@ -66,7 +71,7 @@ export async function getWikiSummary(title: string, apiBaseUrl?: string): Promis
 
             return {
                 title: page.title,
-                extract: page.extract,
+                extract: sanitizeSummary(page.extract),
                 thumbnail: page.thumbnail,
                 type: 'Fandom',
                 lang: 'en'
