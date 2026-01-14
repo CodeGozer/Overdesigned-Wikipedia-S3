@@ -32,9 +32,49 @@ export interface WikiSearchResult {
 /**
  * Fetch a summary of an article (Title, Extract, Thumbnail)
  */
-export async function getWikiSummary(title: string): Promise<WikiSummary | null> {
+export async function getWikiSummary(title: string, apiBaseUrl?: string): Promise<WikiSummary | null> {
     try {
-        const res = await fetch(`${REST_API_BASE}page/summary/${encodeURIComponent(title)}`, { headers: HEADERS });
+        let url = `${REST_API_BASE}page/summary/${encodeURIComponent(title)}`;
+
+        // If external API (Fandom/MediaWiki) is provided, we probably need to use the Action API
+        // because consistent REST API support is spotty on Fandom.
+        if (apiBaseUrl) {
+            // Check if it's strictly the REST base or the root
+            // For now, let's assume we map to Action API for robust Fandom support
+            // Fandom Action API: ?action=query&prop=extracts|pageimages&...
+            const params = new URLSearchParams({
+                action: 'query',
+                titles: title,
+                prop: 'extracts|pageimages|info',
+                exintro: 'true',
+                explaintext: 'true',
+                pithumbsize: '1000', // High res
+                inprop: 'url',
+                format: 'json',
+                origin: '*'
+            });
+            // Construct the API endpoint. apiBaseUrl usually is "https://wiki.fandom.com".
+            // We expect it to need "/api.php" appended if not present, but our InterestEngine sets it as the root.
+            const endpoint = apiBaseUrl.endsWith('api.php') ? apiBaseUrl : `${apiBaseUrl}/api.php`;
+            const actionUrl = `${endpoint}?${params.toString()}`;
+
+            const res = await fetch(actionUrl);
+            const data = await res.json();
+            const page = Object.values(data.query?.pages || {})[0] as any;
+
+            if (!page || page.missing) return null;
+
+            return {
+                title: page.title,
+                extract: page.extract,
+                thumbnail: page.thumbnail,
+                type: 'Fandom',
+                lang: 'en'
+            };
+        }
+
+        // Standard Wikipedia REST
+        const res = await fetch(url, { headers: HEADERS });
         if (!res.ok) return null;
         return await res.json();
     } catch (error) {
@@ -46,8 +86,23 @@ export async function getWikiSummary(title: string): Promise<WikiSummary | null>
 /**
  * Fetch the raw HTML of an article
  */
-export async function getWikiHtml(title: string): Promise<string | null> {
+export async function getWikiHtml(title: string, apiBaseUrl?: string): Promise<string | null> {
     try {
+        if (apiBaseUrl) {
+            // Fandom Action API Parsing
+            const params = new URLSearchParams({
+                action: 'parse',
+                page: title,
+                prop: 'text',
+                format: 'json',
+                origin: '*'
+            });
+            const endpoint = apiBaseUrl.endsWith('api.php') ? apiBaseUrl : `${apiBaseUrl}/api.php`;
+            const res = await fetch(`${endpoint}?${params.toString()}`);
+            const data = await res.json();
+            return data.parse?.text?.['*'] || null;
+        }
+
         const url = `${REST_API_BASE}page/html/${encodeURIComponent(title)}`;
         const res = await fetch(url, { headers: { ...HEADERS, "Accept": "text/html" } });
         if (!res.ok) {
@@ -87,6 +142,39 @@ export async function getRandomArticle(): Promise<WikiSummary | null> {
 
     } catch (error) {
         console.error("Random Article Error:", error);
+        return null;
+    }
+}
+
+/**
+ * Get a random article from a specific category
+ */
+export async function getRandomFromCategory(category: string): Promise<string | null> {
+    try {
+        const params = new URLSearchParams({
+            action: "query",
+            list: "categorymembers",
+            cmtitle: `Category:${category}`,
+            cmlimit: "100", // Fetch up to 100 to pick from
+            cmtype: "page", // Only pages, no subcats
+            format: "json",
+            origin: "*"
+        });
+
+        const res = await fetch(`${ACTION_API_BASE}?${params.toString()}`, { headers: HEADERS });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const members = data?.query?.categorymembers || [];
+
+        if (members.length === 0) return null;
+
+        // Pick random member
+        const randomMember = members[Math.floor(Math.random() * members.length)];
+        return randomMember.title;
+
+    } catch (error) {
+        console.error(`Random Category Fetch Error (${category}):`, error);
         return null;
     }
 }

@@ -1,18 +1,64 @@
 "use client";
-
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useSearch } from './search-context';
+import { getRandomFromCategory } from '@/services/wiki';
+import { COOL_CATEGORIES } from '@/config/curated-categories';
 
 export function SiteHeader() {
   const { openSearch } = useSearch();
+  const router = useRouter();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isRandomLoading, setIsRandomLoading] = useState(false);
+
+  // Scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Serendipity / Random Button Logic
+  const handleRandomClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isRandomLoading) return;
+
+    setIsRandomLoading(true);
+    try {
+      // 1. Pick a cool category
+      const randomCategory = COOL_CATEGORIES[Math.floor(Math.random() * COOL_CATEGORIES.length)];
+
+      // 2. Fetch a random article from it
+      const title = await getRandomFromCategory(randomCategory);
+
+      if (title) {
+        // 3. Navigate
+        const slug = title.replace(/ /g, '_');
+        router.push(`/wiki/${encodeURIComponent(slug)}`);
+      } else {
+        // Fallback if empty category
+        console.warn("Retrying random...");
+        // Simple fallback to a known one or just do nothing (user clicks again)
+      }
+    } catch (error) {
+      console.error("Random failed", error);
+    } finally {
+      setIsRandomLoading(false);
+    }
+  };
 
   return (
     <header
-      className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/80"
+      className={`sticky top-0 z-50 w-full border-b transition-all duration-300 ${isScrolled
+        ? "border-gray-200 bg-white/80 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/80"
+        : "border-transparent bg-transparent"
+        }`}
       data-animate="header-reveal"
     >
-      {/* TODO: Insert Page Wipe Animation Here */}
-      <div className="container mx-auto flex h-full max-w-screen-2xl items-center justify-between px-4">
+      <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         {/* Logo / Home Link */}
         <Link
           href="/home"
@@ -29,12 +75,26 @@ export function SiteHeader() {
                 Home
               </span>
             </Link>
-            <Link href="#" className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch">
-              <span className="relative z-10">
-                Random Article
+
+            {/* Serendipity Button */}
+            <button
+              onClick={handleRandomClick}
+              disabled={isRandomLoading}
+              className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch disabled:opacity-50"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                {isRandomLoading ? (
+                  <>
+                    <span className="animate-spin">⟳</span>
+                    <span>FATE...</span>
+                  </>
+                ) : (
+                  "Random Article"
+                )}
               </span>
-            </Link>
-            <Link href="#" className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch">
+            </button>
+
+            <Link href="/categories" className="group flex items-center transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 text-gray-700 dark:text-gray-200 px-2 py-1 hover-glitch">
               <span className="relative z-10">
                 Categories
               </span>
@@ -52,7 +112,7 @@ export function SiteHeader() {
 
         {/* Mobile View Placeholder */}
         <div className="md:hidden flex items-center gap-4">
-          <span className="font-bold text-lg text-indigo-600">Nicopedia</span>
+          <Link href="/home" className="font-bold text-lg text-indigo-600">Nicopedia</Link>
           <button
             onClick={openSearch}
             className="text-sm font-mono"
@@ -65,7 +125,7 @@ export function SiteHeader() {
           <div className="w-full flex-1 md:w-auto md:flex-none">
             {/* Dynamic Page Title Placeholder */}
             <span className="hidden text-sm text-gray-500 md:inline-block border rounded px-2 py-1 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-              Looking at: <span className="font-semibold text-gray-900 dark:text-gray-100">Index</span>
+              <span className="font-mono text-xs text-gray-400">STATUS:</span> <span className="font-semibold text-gray-900 dark:text-gray-100">ONLINE</span>
             </span>
           </div>
         </div>

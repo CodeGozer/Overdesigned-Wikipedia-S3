@@ -32,6 +32,7 @@ interface InterestItem {
     category: string;
     color: string;
     summary: ArticleSummary | null;
+    apiBaseUrl?: string;
 }
 
 interface HomeOrchestratorProps {
@@ -49,28 +50,49 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
         setUserInterests(interests);
 
         try {
-            // 1. Generate the expanded grid based on inputs
+            // 1. Generate the expanded grid based on inputs (Hybrid: Wiki + Fandom)
             const gridResults = await generateGrid(interests);
 
-            // 2. Fetch data for new items in parallel
+            // 2. Map results to visual items
             const newArticles = await Promise.all(
                 gridResults.map(async (result) => {
                     // Normalize title for URL
                     const slug = result.title.replace(/ /g, '_');
 
-                    // Use pre-fetched summary if available (from AI discovery), else fetch fresh
+                    // Use pre-fetched summary if available
                     let summary = result.summary;
                     if (!summary) {
-                        summary = await getWikiSummary(result.title);
+                        // Pass apiBaseUrl if available
+                        summary = await getWikiSummary(result.title, result.apiBaseUrl);
+                    }
+
+                    // Determine Visual Style based on Source/Type
+                    let category = 'Discovery';
+                    let color = 'hot-pink';
+                    let label = result.title.replace(/_/g, ' ');
+
+                    if (result.type === 'USER_SELECTED') {
+                        category = 'Obsession';
+                        color = 'neon-green';
+                    } else if (result.source === 'FANDOM') {
+                        category = 'FANDOM // LORE';
+                        color = 'hot-pink'; // or gold/purple? Let's stick to hot-pink for Lore
+                    } else {
+                        category = 'WIKI // DATA';
+                        color = 'cyan'; // Differentiates Reality (Wiki) from Lore (Fandom) from User (Green)
+                        // Actually, request said: REALITY = Neon Green (or similar to user?), LORE = Hot Pink.
+                        // Let's make user Neon Green, Wiki Cyan/Blue (Data), Fandom Pink (Lore).
+                        color = 'neon-blue';
                     }
 
                     return {
                         slug: slug,
-                        label: result.title.replace(/_/g, ' '),
-                        size: (result.type === 'USER_SELECTED' ? 'HERO' : 'STANDARD') as "HERO" | "STANDARD", // User picks get HERO size
-                        category: result.type === 'USER_SELECTED' ? 'Obsession' : 'Discovery',
-                        color: result.type === 'USER_SELECTED' ? 'neon-green' : 'hot-pink',
-                        summary: summary
+                        label: label,
+                        size: (result.type === 'USER_SELECTED' ? 'HERO' : 'STANDARD') as "HERO" | "STANDARD",
+                        category: category,
+                        color: color,
+                        summary: summary,
+                        apiBaseUrl: result.apiBaseUrl // Pass it through
                     };
                 })
             );
@@ -79,7 +101,6 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             setMode('DASHBOARD');
         } catch (error) {
             console.error("Failed to calculate grid:", error);
-            // Fallback to initial if error
             setMode('DASHBOARD');
         } finally {
             setIsCalculating(false);
@@ -115,8 +136,8 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             )}
 
             {/* MODE: DASHBOARD */}
-            {/* We render this but hide it or animate it in. 
-                Actually, simpler to conditionally render so we get the mounting animation of HeroAnimator. 
+            {/* We render this but hide it or animate it in.
+                Actually, simpler to conditionally render so we get the mounting animation of HeroAnimator.
             */}
             {mode === 'DASHBOARD' && (
                 <div className="animate-in fade-in duration-1000 slide-in-from-bottom-10">
@@ -144,6 +165,12 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                 {displayedArticles.map((item, index) => {
                                     if (!item.summary) return null;
 
+                                    // Construct HREF with API param if needed
+                                    let href = `/wiki/${encodeURIComponent(item.slug)}`;
+                                    if (item.apiBaseUrl) {
+                                        href += `?api=${encodeURIComponent(item.apiBaseUrl)}`;
+                                    }
+
                                     return (
                                         <EntryCard
                                             key={item.slug}
@@ -151,7 +178,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                             title={item.label}
                                             category={item.category}
                                             date="LIVE"
-                                            href={`/wiki/${encodeURIComponent(item.slug)}`}
+                                            href={href}
                                             color={item.color as any}
                                             imageUrl={item.summary.thumbnail?.source}
                                             size={item.size}

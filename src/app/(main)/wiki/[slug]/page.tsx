@@ -8,17 +8,23 @@ import { getThemeColor } from "@/config/themes";
 
 interface PageProps {
     params: Promise<{ slug: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function WikiPage({ params }: PageProps) {
+export default async function WikiPage({ params, searchParams }: PageProps) {
     const { slug } = await params;
-    const title = decodeURIComponent(slug).replace(/_/g, " ");
-    const themeColor = getThemeColor(slug); // Get the mapped color
+    const { api } = await searchParams; // Get API base url from query
 
-    // Fetch Data in Parallel
+    // Safety check for API url to ensure it's a valid string if present
+    const apiBaseUrl = typeof api === 'string' ? decodeURIComponent(api) : undefined;
+
+    const title = decodeURIComponent(slug).replace(/_/g, " ");
+    const themeColor = getThemeColor(slug);
+
+    // Fetch Data in Parallel (passing apiBaseUrl)
     const [summary, html] = await Promise.all([
-        getWikiSummary(title),
-        getWikiHtml(title)
+        getWikiSummary(title, apiBaseUrl),
+        getWikiHtml(title, apiBaseUrl)
     ]);
 
     if (!summary || !html) {
