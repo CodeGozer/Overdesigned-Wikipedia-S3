@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { clsx } from "clsx";
+import { useState } from "react";
+import { GeometricCardPlaceholder } from "./geometric-card-placeholder";
 
 interface EntryCardProps {
     title: string;
@@ -27,6 +29,7 @@ export function EntryCard({
     imageUrl,
     size = "STANDARD"
 }: EntryCardProps) {
+    const [imageError, setImageError] = useState(false);
 
     const borderColor = color === "neon-green" ? "border-neon-green" : "border-hot-pink";
     const shadowColor = color === "neon-green" ? "shadow-neon-green" : "shadow-hot-pink";
@@ -56,16 +59,20 @@ export function EntryCard({
             data-index={index}
         >
             {/* Background Image (Lazy Loaded + Hardware Accelerated) */}
-            {imageUrl && (
+            {(imageUrl && !imageError) ? (
                 <div className="absolute inset-0 z-0 overflow-hidden">
                     <Image
                         src={imageUrl}
                         alt={title}
                         fill
+                        unoptimized
+                        onError={() => setImageError(true)}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover opacity-80 transition-all duration-500 grayscale group-hover:grayscale-0 group-hover:scale-105 will-change-transform"
                     />
                 </div>
+            ) : (
+                <GeometricCardPlaceholder variant={((index || 0) % 3 === 0 ? 'a' : (index || 0) % 3 === 1 ? 'b' : 'c') as any} />
             )}
 
             {/* Solid Fill Animation (Overlay) */}

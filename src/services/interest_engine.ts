@@ -1,5 +1,7 @@
 
-interface WikiPage {
+// --- Types ---
+
+export interface WikiPage {
     pageid: number;
     title: string;
     extract?: string;
@@ -18,6 +20,11 @@ export interface InterestResult {
     category?: string;
     summary?: any;
     apiBaseUrl?: string;
+}
+
+export interface InterestVector {
+    term: string;
+    lockedSource?: string; // Fandom URL if manually selected
 }
 
 const WIKI_API_BASE = 'https://en.wikipedia.org/w/api.php?origin=*';
@@ -180,14 +187,17 @@ async function fetchFandomMoreLike(baseUrl: string, topic: string, limit: number
 // --- MAIN LOGIC ---
 
 export async function getHybridRecommendations(
-    userInputs: string[],
+    userInputs: (string | InterestVector)[], // Backwards compat with string[]
     depth: number = 2,
     mode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL'
 ): Promise<InterestResult[]> {
     const results: InterestResult[] = [];
     const usedTitles = new Set<string>();
 
-    const targetSize = 10;
+    // Normalize inputs to InterestVector objects
+    const vectors: InterestVector[] = userInputs.map(i =>
+        typeof i === 'string' ? { term: i } : i
+    );
 
     // Determine rations based on depth
     let wikiLimit = 5;
@@ -202,16 +212,20 @@ export async function getHybridRecommendations(
     }
 
     // --- SYNTHESIS MODE LOGIC ---
-    if (mode === 'SYNTHESIS' && userInputs.length > 1) {
-        const combinedQuery = userInputs.join(' ');
+    if (mode === 'SYNTHESIS' && vectors.length > 1) {
+        const combinedQuery = vectors.map(v => v.term).join(' ');
         console.log(`[SYNTHESIS] Attempting cross-vector search: "${combinedQuery}"`);
 
         // 1. Try to find a Wikipedia page for the combined string (e.g., "Star Wars Lego")
         const synthesisResults = await fetchWikiMoreLike(combinedQuery, wikiLimit);
 
         // 2. Try Fandom for the combined string
-        // We use the first term as the likely "base" fandom, or try to detect from combined
-        const fandomUrl = await findFandomWiki(userInputs[0]); // Heuristic: Use primary vector for finding the wiki
+        // We use the first term (or its locked source) as the likely "base" fandom
+        let fandomUrl = vectors[0].lockedSource;
+        if (!fandomUrl) {
+            fandomUrl = await findFandomWiki(vectors[0].term) || undefined;
+        }
+
         let synthesisFandom: WikiPage[] = [];
 
         if (fandomUrl) {
@@ -240,18 +254,29 @@ export async function getHybridRecommendations(
                 }
             });
 
-            // Also add the original inputs as "User Selected" anchors at the top
-            // So user knows what created this mess
-            for (const input of userInputs) {
-                const canonical = await findCanonicalPage(input);
-                const title = canonical ? canonical.title : input;
-                if (!usedTitles.has(title)) {
-                    results.unshift({ // Add to start
-                        title: title,
+            // Also add the original inputs as "User Selected" anchors
+            for (const vec of vectors) {
+                // Determine Source based on lock
+                if (vec.lockedSource) {
+                    results.unshift({
+                        title: vec.term, // Might need to fetch actual title
                         type: 'USER_SELECTED',
-                        source: 'WIKIPEDIA'
+                        source: 'FANDOM',
+                        apiBaseUrl: vec.lockedSource,
+                        summary: { title: vec.term, extract: "User Selected Fandom Source" }
                     });
-                    usedTitles.add(title);
+                    usedTitles.add(vec.term);
+                } else {
+                    const canonical = await findCanonicalPage(vec.term);
+                    const title = canonical ? canonical.title : vec.term;
+                    if (!usedTitles.has(title)) {
+                        results.unshift({
+                            title: title,
+                            type: 'USER_SELECTED',
+                            source: 'WIKIPEDIA'
+                        });
+                        usedTitles.add(title);
+                    }
                 }
             }
 
@@ -259,63 +284,38 @@ export async function getHybridRecommendations(
         } else {
             // FAIL: No intersection found. Fallback to Parallel.
             console.warn("[SYNTHESIS] No correlation found. Reverting to PARALLEL.");
-            // We continue execution below...
-            // In a real app we might return a special flag to show a toast.
         }
     }
 
 
     // --- PARALLEL MODE LOGIC (Default & Fallback) ---
-    for (const input of userInputs) {
+    for (const vec of vectors) {
+
         // 0. Add User Input (Direct Hit)
-        const canonical = await findCanonicalPage(input);
-        const title = canonical ? canonical.title : input;
-
-        if (!usedTitles.has(title)) {
+        // Check for Locked Source
+        if (vec.lockedSource) {
             results.push({
-                title: title,
+                title: vec.term,
                 type: 'USER_SELECTED',
-                source: 'WIKIPEDIA', // Default source for user input
-                summary: canonical ? {
-                    title: canonical.title,
-                    extract: canonical.extract,
-                    thumbnail: canonical.thumbnail
-                } : undefined
+                source: 'FANDOM',
+                apiBaseUrl: vec.lockedSource,
+                summary: { title: vec.term, extract: "Direct Fandom Access" } // Placeholder summary until fetch
             });
-            usedTitles.add(title);
-        }
+            usedTitles.add(vec.term);
 
-        // STEP A: Wikipedia Search (The Anchor)
-        const wikiResults = await fetchWikiMoreLike(title, wikiLimit);
-        wikiResults.forEach(page => {
-            if (!usedTitles.has(page.title) && !page.title.includes("(disambiguation)")) {
-                results.push({
-                    title: page.title,
-                    type: 'AI_DISCOVERY',
-                    source: 'WIKIPEDIA',
-                    summary: {
-                        title: page.title,
-                        extract: page.extract,
-                        thumbnail: page.thumbnail
-                    }
-                });
-                usedTitles.add(page.title);
-            }
-        });
+            // STEP B: Fandom Search (The Deep Dive) - Explicitly using locked source
+            const fandomResults = await fetchFandomMoreLike(vec.lockedSource, vec.term, fandomLimit + wikiLimit); // Take all slots since Wiki is skipped? Or respect ratio?
+            // Actually, if I locked it to Fandom, should I show Wiki results? 
+            // The prompt says "Sourcing ONLY from that Fandom URL".
+            // So we override the limits to be 100% Fandom for this vector.
 
-        // STEP B: Fandom Search (The Deep Dive)
-        const fandomUrl = await findFandomWiki(input);
-
-        if (fandomUrl) {
-            // Found a specific wiki!
-            const fandomResults = await fetchFandomMoreLike(fandomUrl, input, fandomLimit);
             fandomResults.forEach(page => {
                 if (!usedTitles.has(page.title)) {
                     results.push({
                         title: page.title,
                         type: 'AI_DISCOVERY',
                         source: 'FANDOM',
-                        apiBaseUrl: fandomUrl,
+                        apiBaseUrl: vec.lockedSource,
                         summary: {
                             title: page.title,
                             extract: page.extract,
@@ -325,13 +325,30 @@ export async function getHybridRecommendations(
                     usedTitles.add(page.title);
                 }
             });
+
         } else {
-            // No Fandom found. Fill the gap with more Wikipedia if needed.
-            // If we are in Deep Mode but no Fandom found, we just do more Wiki but maybe warn?
-            // For now, just fill up.
-            const moreWiki = await fetchWikiMoreLike(title, fandomLimit);
-            moreWiki.forEach(page => {
-                if (!usedTitles.has(page.title)) {
+            // Standard Wikipedia Path
+            const canonical = await findCanonicalPage(vec.term);
+            const title = canonical ? canonical.title : vec.term;
+
+            if (!usedTitles.has(title)) {
+                results.push({
+                    title: title,
+                    type: 'USER_SELECTED',
+                    source: 'WIKIPEDIA',
+                    summary: canonical ? {
+                        title: canonical.title,
+                        extract: canonical.extract,
+                        thumbnail: canonical.thumbnail
+                    } : undefined
+                });
+                usedTitles.add(title);
+            }
+
+            // STEP A: Wikipedia Search
+            const wikiResults = await fetchWikiMoreLike(title, wikiLimit);
+            wikiResults.forEach(page => {
+                if (!usedTitles.has(page.title) && !page.title.includes("(disambiguation)")) {
                     results.push({
                         title: page.title,
                         type: 'AI_DISCOVERY',
@@ -345,6 +362,48 @@ export async function getHybridRecommendations(
                     usedTitles.add(page.title);
                 }
             });
+
+            // STEP B: Fandom Search (Auto-Discovery)
+            const fandomUrl = await findFandomWiki(vec.term);
+
+            if (fandomUrl) {
+                const fandomResults = await fetchFandomMoreLike(fandomUrl, vec.term, fandomLimit);
+                fandomResults.forEach(page => {
+                    if (!usedTitles.has(page.title)) {
+                        results.push({
+                            title: page.title,
+                            type: 'AI_DISCOVERY',
+                            source: 'FANDOM',
+                            apiBaseUrl: fandomUrl,
+                            summary: {
+                                title: page.title,
+                                extract: page.extract,
+                                thumbnail: page.thumbnail
+                            }
+                        });
+                        usedTitles.add(page.title);
+                    }
+                });
+            } else {
+                // Fill with more Wiki
+                const moreWiki = await fetchWikiMoreLike(title, fandomLimit);
+                moreWiki.forEach(page => {
+                    if (!usedTitles.has(page.title)) {
+                        results.push({
+                            title: page.title,
+                            type: 'AI_DISCOVERY',
+                            source: 'WIKIPEDIA',
+                            summary: {
+                                title: page.title,
+                                extract: page.extract,
+                                thumbnail: page.thumbnail
+                            }
+                        });
+                        usedTitles.add(page.title);
+                    }
+                });
+            }
+
         }
     }
 

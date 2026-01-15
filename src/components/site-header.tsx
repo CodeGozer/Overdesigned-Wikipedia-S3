@@ -41,7 +41,6 @@ export function SiteHeader() {
       } else {
         // Fallback if empty category
         console.warn("Retrying random...");
-        // Simple fallback to a known one or just do nothing (user clicks again)
       }
     } catch (error) {
       console.error("Random failed", error);

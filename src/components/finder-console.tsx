@@ -1,11 +1,12 @@
-"use client";
-
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import gsap from 'gsap';
+import { InterestVector } from '@/services/interest_engine';
+import { searchWiki, searchFandomCommunities, FederatedResult } from '@/services/wiki';
+import { Search, Globe, Flame, Lock } from 'lucide-react';
 
 interface FinderConsoleProps {
-    onSearch: (interests: string[], depth: number, mode: 'PARALLEL' | 'SYNTHESIS') => void;
+    onSearch: (interests: InterestVector[], depth: number, mode: 'PARALLEL' | 'SYNTHESIS') => void;
     onTutorial?: () => void;
 }
 
@@ -16,33 +17,88 @@ const SUGGESTIONS = [
 
 export function FinderConsole({ onSearch, onTutorial }: FinderConsoleProps) {
     const [inputValue, setInputValue] = useState("");
-    const [interests, setInterests] = useState<string[]>([]);
+    const [interests, setInterests] = useState<InterestVector[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [signalDepth, setSignalDepth] = useState(2); // 1=Surface, 2=Hybrid, 3=Deep
     const [correlationMode, setCorrelationMode] = useState<'PARALLEL' | 'SYNTHESIS'>('PARALLEL');
+    const [suggestions, setSuggestions] = useState<FederatedResult[]>([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Sound effect refs (placeholders for now)
-    // const playClick = useSound('/sounds/click.mp3'); 
+    // Federated Autocomplete Logic
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            if (inputValue.length < 3) {
+                setSuggestions([]);
+                setShowDropdown(false);
+                return;
+            }
 
-    const addInterest = (term: string) => {
-        if (!term.trim()) return;
-        if (interests.length >= 5) return; // Cap at 5 for now
-        if (interests.includes(term.trim())) {
-            setInputValue("");
-            return;
+            try {
+                // Fetch both Wikipedia and Fandom results in parallel
+                const [wikiResults, fandomResults] = await Promise.all([
+                    searchWiki(inputValue),
+                    searchFandomCommunities(inputValue)
+                ]);
+
+                // Merge: Interleave or concat? Concat seems fine with distinct types.
+                // Let's cap total suggestions to 8
+                const merged = [...wikiResults.slice(0, 4), ...fandomResults.slice(0, 4)];
+                setSuggestions(merged);
+                setShowDropdown(true);
+
+            } catch (error) {
+                console.error("Autocomplete failed", error);
+            }
+        };
+
+        const debounce = setTimeout(fetchSuggestions, 300);
+        return () => clearTimeout(debounce);
+    }, [inputValue]);
+
+
+    // Add Interest Logic
+    const addInterest = (item: string | FederatedResult) => {
+        if (interests.length >= 5) return;
+
+        let newInterest: InterestVector;
+
+        if (typeof item === 'string') {
+            // Simple string (from Suggestions Ticker or plain enter)
+            if (!item.trim()) return;
+            if (interests.some(i => i.term.toLowerCase() === item.trim().toLowerCase())) {
+                setInputValue("");
+                return;
+            }
+            newInterest = { term: item.trim() };
+        } else {
+            // Federated Result (from Autocomplete)
+            if (interests.some(i => i.term.toLowerCase() === item.title.toLowerCase())) {
+                setInputValue("");
+                setShowDropdown(false);
+                return;
+            }
+            newInterest = {
+                term: item.title,
+                lockedSource: item.type === 'FANDOM' ? item.url : undefined
+            };
         }
 
-        setInterests(prev => [...prev, term.trim()]);
+        setInterests(prev => [...prev, newInterest]);
         setInputValue("");
+        setShowDropdown(false);
+        setSuggestions([]);
 
         // Focus back on input
         inputRef.current?.focus();
     };
 
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
+            setShowDropdown(false);
             addInterest(inputValue);
         }
     };
@@ -87,7 +143,7 @@ export function FinderConsole({ onSearch, onTutorial }: FinderConsoleProps) {
                 /// Hyperfixation_Console_v1.0 ///
             </div>
 
-            {/* Glowing Input Field */}
+            {/* Glowing Input Field + Dropdown */}
             <div id="tutorial-target-input" className="console-ui relative w-full max-w-2xl group">
                 <input
                     ref={inputRef}
@@ -99,6 +155,44 @@ export function FinderConsole({ onSearch, onTutorial }: FinderConsoleProps) {
                     className="w-full bg-deep-void/80 border-2 border-white text-white font-display text-2xl md:text-5xl uppercase p-6 md:p-8 outline-none placeholder:text-white/20 focus:border-neon-green transition-all duration-300 shadow-[0_0_20px_rgba(0,255,0,0)] focus:shadow-[0_0_40px_rgba(0,255,0,0.2)] tracking-tighter"
                     autoFocus
                 />
+
+                {/* Autocomplete Dropdown */}
+                {showDropdown && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-black border border-white/20 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        {suggestions.map((result, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => addInterest(result)}
+                                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/10 text-left border-b border-white/5 last:border-0 group/item transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className={cn(
+                                        "p-1 rounded text-black font-bold text-[10px] w-6 h-6 flex items-center justify-center",
+                                        result.type === 'WIKIPEDIA' ? "bg-neon-green" : "bg-hot-pink"
+                                    )}>
+                                        {result.type === 'WIKIPEDIA' ? <Globe size={14} /> : <Flame size={14} />}
+                                    </span>
+                                    <div className="flex flex-col">
+                                        <span className="font-mono font-bold text-white text-sm uppercase group-hover/item:text-neon-green transition-colors">
+                                            {result.title}
+                                        </span>
+                                        {result.desc && (
+                                            <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+                                                {result.desc}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                {result.type === 'FANDOM' && (
+                                    <span className="text-hot-pink text-[10px] font-mono border border-hot-pink/30 px-2 py-0.5 opacity-50">
+                                        LORE_SOURCE
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
 
                 {/* Decorative Corners */}
                 <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-neon-green -translate-x-1 -translate-y-1" />
@@ -184,11 +278,15 @@ export function FinderConsole({ onSearch, onTutorial }: FinderConsoleProps) {
                 {interests.map((interest, idx) => (
                     <div
                         key={idx}
-                        className="bg-neon-green text-black font-bold font-mono text-sm px-4 py-3 uppercase tracking-wider flex items-center gap-2 animate-in fade-in zoom-in duration-300 border-2 border-neon-green"
+                        className={cn(
+                            "text-black font-bold font-mono text-sm px-4 py-3 uppercase tracking-wider flex items-center gap-2 animate-in fade-in zoom-in duration-300 border-2",
+                            interest.lockedSource ? "bg-hot-pink border-hot-pink" : "bg-neon-green border-neon-green"
+                        )}
                     >
-                        <span>{interest}</span>
+                        {interest.lockedSource && <Lock size={12} className="text-black/70" />}
+                        <span>{interest.term}</span>
                         <button
-                            onClick={() => setInterests(interests.filter(i => i !== interest))}
+                            onClick={() => setInterests(interests.filter(i => i.term !== interest.term))}
                             className="hover:scale-125 transition-transform"
                         >
                             ×

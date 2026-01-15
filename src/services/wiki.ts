@@ -29,10 +29,7 @@ export interface WikiSummary {
     lang?: string;
 }
 
-export interface WikiSearchResult {
-    title: string;
-    url: string;
-}
+
 
 /**
  * Fetch a summary of an article (Title, Extract, Thumbnail)
@@ -185,9 +182,19 @@ export async function getRandomFromCategory(category: string): Promise<string | 
 }
 
 /**
- * Search/Autocomplete using Opensearch
+ * Federated Search Result Interface
  */
-export async function searchWiki(query: string): Promise<WikiSearchResult[]> {
+export interface FederatedResult {
+    title: string;
+    url: string;
+    type: 'WIKIPEDIA' | 'FANDOM';
+    desc?: string; // Optional description/snippet
+}
+
+/**
+ * Search/Autocomplete using Opensearch (Wikipedia)
+ */
+export async function searchWiki(query: string): Promise<FederatedResult[]> {
     if (!query) return [];
 
     try {
@@ -210,11 +217,53 @@ export async function searchWiki(query: string): Promise<WikiSearchResult[]> {
 
         return titles.map((title: string, index: number) => ({
             title,
-            url: urls[index]
+            url: urls[index],
+            type: 'WIKIPEDIA'
         }));
 
     } catch (error) {
         console.error("Search API Error:", error);
+        return [];
+    }
+}
+
+/**
+ * Search Fandom Communities
+ * Finds wikis (e.g. "Fallout Wiki") rather than just pages.
+ */
+export async function searchFandomCommunities(query: string): Promise<FederatedResult[]> {
+    if (!query || query.length < 2) return [];
+
+    try {
+        // Fandom's Cross-Wiki Search
+        // API Endpoint: https://community.fandom.com/api.php
+        const params = new URLSearchParams({
+            action: "query",
+            list: "wikis",
+            gksearch: query,
+            wklimit: "5",
+            format: "json",
+            origin: "*"
+        });
+
+        const res = await fetch(`https://community.fandom.com/api.php?${params.toString()}`, {
+            headers: { "Accept": "application/json" }
+        });
+
+        if (!res.ok) return [];
+
+        const data = await res.json();
+        const wikis = data.query?.wikis || [];
+
+        return wikis.map((wiki: any) => ({
+            title: wiki.sitename || wiki.title, // 'sitename' is usually cleaner e.g. "Fallout Wiki"
+            url: wiki.url,
+            type: 'FANDOM',
+            desc: `Community ID: ${wiki.id} • Lang: ${wiki.lang}`
+        }));
+
+    } catch (error) {
+        console.error("Fandom Search Error:", error);
         return [];
     }
 }

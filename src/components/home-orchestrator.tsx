@@ -6,9 +6,10 @@ import { HeroAnimator } from './hero-animator';
 import { BentoGrid } from './bento-grid';
 import { DigitalClock } from './digital-clock';
 import { RandomButton } from './random-button';
+import { LuckyButton } from './lucky-button';
 import { KineticMarquee } from './kinetic-marquee';
 import { EntryCard } from './entry-card';
-import { generateGrid } from '@/services/interest_engine';
+import { InterestVector, generateGrid } from '@/services/interest_engine';
 import { getWikiSummary } from '@/services/wiki';
 import { SystemTutorial } from './system-tutorial';
 
@@ -42,12 +43,18 @@ interface HomeOrchestratorProps {
 
 export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
     const [mode, setMode] = useState<'CONSOLE' | 'DASHBOARD'>('CONSOLE');
-    const [userInterests, setUserInterests] = useState<string[]>([]);
+    const [userInterests, setUserInterests] = useState<InterestVector[]>([]);
     const [displayedArticles, setDisplayedArticles] = useState<InterestItem[]>(initialArticles);
     const [isCalculating, setIsCalculating] = useState(false);
     const [isRestoring, setIsRestoring] = useState(true); // Start true to check storage
     const [showTutorial, setShowTutorial] = useState(false);
     const [searchMode, setSearchMode] = useState<'PARALLEL' | 'SYNTHESIS'>('PARALLEL');
+
+    // Keep track of interests for event listeners
+    const interestsRef = React.useRef(userInterests);
+    React.useEffect(() => {
+        interestsRef.current = userInterests;
+    }, [userInterests]);
 
     // Persistence Logic (Back Button Fix) & Tutorial Check
     React.useEffect(() => {
@@ -64,9 +71,14 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                 try {
                     const parsed = JSON.parse(savedVectors);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        // Found saved state! Skip console and restore grid.
-                        console.log("Found persisted session:", parsed);
-                        await handleSearch(parsed, 2, 'PARALLEL', false); // Default depth 2, Parallel, Don't save again recursively
+                        // Found saved state!
+                        // Migration Check: If old string[] format, convert to InterestVector[]
+                        const migrated: InterestVector[] = parsed.map(p =>
+                            typeof p === 'string' ? { term: p } : p
+                        );
+
+                        console.log("Found persisted session:", migrated);
+                        await handleSearch(migrated, 2, 'PARALLEL', false);
                         setIsRestoring(false);
                         return;
                     }
@@ -80,9 +92,37 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
         };
 
         checkPersistence();
+
+        // Listen for "Chaos Vector" Randomizer Event (Replace All)
+        const handleRandomize = (e: any) => {
+            const newInterests = e.detail as InterestVector[];
+            console.log("LUCKY VECTORS RECEIVED:", newInterests);
+            handleSearch(newInterests, 2, 'PARALLEL', true);
+        };
+
+        // Listen for "Inject Chaos" (Append)
+        const handleInjectChaos = (e: any) => {
+            const seedTerm = e.detail.term;
+            console.log("INJECTING CHAOS:", seedTerm);
+
+            const current = interestsRef.current;
+            // Avoid duplicates
+            if (current.some(i => i.term === seedTerm)) return;
+
+            const newInterests = [...current, { term: seedTerm }];
+            handleSearch(newInterests, 2, 'PARALLEL', true);
+        };
+
+        window.addEventListener('nicopedia:randomize', handleRandomize);
+        window.addEventListener('nicopedia:inject-chaos', handleInjectChaos);
+
+        return () => {
+            window.removeEventListener('nicopedia:randomize', handleRandomize);
+            window.removeEventListener('nicopedia:inject-chaos', handleInjectChaos);
+        };
     }, []);
 
-    const handleSearch = async (interests: string[], depth: number = 2, correlationMode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL', saveToStorage = true) => {
+    const handleSearch = async (interests: InterestVector[], depth: number = 2, correlationMode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL', saveToStorage = true) => {
         setIsCalculating(true);
         setUserInterests(interests);
         setSearchMode(correlationMode);
@@ -225,11 +265,12 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                         /// NICO'S ARCHIVE<br />
                                         /// INDEX OF OBSESSIONS<br />
                                         <span className="text-neon-green">
-                                            /// FILTERS: [{userInterests.join(', ')}]
+                                            /// FILTERS: [{userInterests.map(i => i.term).join(', ')}]
                                         </span>
                                     </div>
                                     <div className="flex gap-2">
                                         <RandomButton />
+                                        <LuckyButton />
                                         {/* Desktop Reset Button */}
                                         <button
                                             onClick={resetProfile}
