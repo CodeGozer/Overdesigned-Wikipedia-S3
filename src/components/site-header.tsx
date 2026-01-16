@@ -32,7 +32,28 @@ export function SiteHeader() {
       const randomCategory = COOL_CATEGORIES[Math.floor(Math.random() * COOL_CATEGORIES.length)];
 
       // 2. Fetch a random article from it
-      const title = await getRandomFromCategory(randomCategory);
+      // COOL_CATEGORIES is now an object array, so we need the 'target' property
+      // If it's a Fandom link, we might want to handle it differently, but getRandomFromCategory 
+      // primarily supports standard Wiki categories.
+      // For now, let's use the 'target' if it's a wiki_category or wiki_article and try to find related content.
+      // If it's a Fandom link, 'target' is the slug. 
+      // NOTE: getRandomFromCategory expects a category name. If 'target' is an article (wiki_article),
+      // we might just want to go there directly? 
+      // Let's keep it simple: if it's an article type, go there. If it's a category, fetch random.
+
+      if (randomCategory.type === 'wiki_article' || randomCategory.type === 'fandom') {
+        // Direct navigation for specific articles or Fandom main pages
+        // Simulating "random" feel by just going to the cool topic
+        const slug = randomCategory.target;
+        const url = randomCategory.type === 'fandom'
+          ? `/wiki/fandom/${slug}?api=${encodeURIComponent(randomCategory.api_url || '')}`
+          : `/wiki/${slug}`;
+        router.push(url);
+        return;
+      }
+
+      // If it's a proper category, fetch a random member
+      const title = await getRandomFromCategory(randomCategory.target);
 
       if (title) {
         // 3. Navigate

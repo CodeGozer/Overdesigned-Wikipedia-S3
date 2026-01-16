@@ -27,58 +27,117 @@ export interface WikiSummary {
     description?: string;
     type?: string;
     lang?: string;
+    gallery?: string[];
 }
 
 
 
 /**
  * Fetch a summary of an article (Title, Extract, Thumbnail)
+ * AND a gallery of images (Smart Filtered)
  */
 export async function getWikiSummary(title: string, apiBaseUrl?: string): Promise<WikiSummary | null> {
     try {
-        let url = `${REST_API_BASE}page/summary/${encodeURIComponent(title)}`;
+        // --- 1. Fetch Main Summary (REST or Action API) ---
+        let mainData: any = null;
+        let isFandom = false;
 
-        // If external API (Fandom/MediaWiki) is provided, we probably need to use the Action API
-        // because consistent REST API support is spotty on Fandom.
         if (apiBaseUrl) {
-            // Check if it's strictly the REST base or the root
-            // For now, let's assume we map to Action API for robust Fandom support
-            // Fandom Action API: ?action=query&prop=extracts|pageimages&...
+            // Fandom Logic
+            isFandom = true;
             const params = new URLSearchParams({
                 action: 'query',
                 titles: title,
                 prop: 'extracts|pageimages|info',
                 exintro: 'true',
                 explaintext: 'true',
-                pithumbsize: '1000', // High res
+                pithumbsize: '1000',
                 inprop: 'url',
                 format: 'json',
                 origin: '*'
             });
-            // Construct the API endpoint. apiBaseUrl usually is "https://wiki.fandom.com".
-            // We expect it to need "/api.php" appended if not present, but our InterestEngine sets it as the root.
             const endpoint = apiBaseUrl.endsWith('api.php') ? apiBaseUrl : `${apiBaseUrl}/api.php`;
-            const actionUrl = `${endpoint}?${params.toString()}`;
-
-            const res = await fetch(actionUrl);
+            const res = await fetch(`${endpoint}?${params.toString()}`);
             const data = await res.json();
             const page = Object.values(data.query?.pages || {})[0] as any;
 
-            if (!page || page.missing) return null;
-
-            return {
-                title: page.title,
-                extract: sanitizeSummary(page.extract),
-                thumbnail: page.thumbnail,
-                type: 'Fandom',
-                lang: 'en'
-            };
+            if (page && !page.missing) {
+                mainData = {
+                    title: page.title,
+                    extract: sanitizeSummary(page.extract),
+                    thumbnail: page.thumbnail,
+                    type: 'Fandom',
+                    lang: 'en'
+                };
+            }
+        } else {
+            // Wikipedia REST Logic
+            const url = `${REST_API_BASE}page/summary/${encodeURIComponent(title)}`;
+            const res = await fetch(url, { headers: HEADERS });
+            if (res.ok) {
+                mainData = await res.json();
+            }
         }
 
-        // Standard Wikipedia REST
-        const res = await fetch(url, { headers: HEADERS });
-        if (!res.ok) return null;
-        return await res.json();
+        if (!mainData) return null;
+
+        // --- 2. Fetch Gallery Images (Parallel Action API Call) ---
+        // We do this for both Wikipedia and Fandom to get better images
+        const galleryEndpoint = apiBaseUrl
+            ? (apiBaseUrl.endsWith('api.php') ? apiBaseUrl : `${apiBaseUrl}/api.php`)
+            : ACTION_API_BASE;
+
+        // Params: generator=images returns file pages used on the page
+        const galleryParams = new URLSearchParams({
+            action: 'query',
+            titles: title,
+            generator: 'images',
+            gimlimit: '15', // Fetch a few more to allow for filtering
+            prop: 'imageinfo',
+            iiprop: 'url|mime|size',
+            format: 'json',
+            origin: '*'
+        });
+
+        const galleryRes = await fetch(`${galleryEndpoint}?${galleryParams.toString()}`, { headers: HEADERS });
+        const galleryData = await galleryRes.json();
+
+        // Extract pages from the generator result
+        const imagePages = Object.values(galleryData.query?.pages || {}) as any[];
+
+        // --- 3. Smart Filter ---
+        const gallery = imagePages
+            .filter((img: any) => {
+                const info = img.imageinfo?.[0];
+                if (!info) return false;
+
+                // 1. MIME Type Check
+                if (info.mime === 'image/svg+xml') return false;
+
+                // 2. Extension Check
+                const url = info.url?.toLowerCase() || '';
+                if (!url.match(/\.(jpg|jpeg|png)$/)) return false;
+
+                // 3. Name/Keyword Blocklist
+                const name = img.title?.toLowerCase() || '';
+                if (name.match(/(icon|logo|flag|stub|symbol|vote|question|ambox)/)) return false;
+
+                // 4. Size Check (skip tiny images)
+                if (info.width && info.width < 300) return false;
+                if (info.height && info.height < 300) return false;
+
+                return true;
+            })
+            .map((img: any) => img.imageinfo[0].url) // Extract just the URL
+            .slice(0, 8); // Top 8 valid images
+
+        // console.log(`[WikiAdapter] Gallery for ${title}:`, gallery);
+
+        return {
+            ...mainData,
+            gallery
+        };
+
     } catch (error) {
         console.error("Wiki Summary Fetch Error:", error);
         return null;

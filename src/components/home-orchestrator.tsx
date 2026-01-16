@@ -25,6 +25,7 @@ interface ArticleSummary {
         width: number;
         height: number;
     };
+    gallery?: string[];
 }
 
 interface InterestItem {
@@ -35,6 +36,7 @@ interface InterestItem {
     color: string;
     summary: ArticleSummary | null;
     apiBaseUrl?: string;
+    gallery?: string[];
 }
 
 interface HomeOrchestratorProps {
@@ -171,7 +173,8 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                         category: category,
                         color: color,
                         summary: summary,
-                        apiBaseUrl: result.apiBaseUrl // Pass it through
+                        apiBaseUrl: result.apiBaseUrl, // Pass it through
+                        gallery: summary.gallery // Pass gallery
                     };
                 })
             );
@@ -313,6 +316,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                             color={item.color as any}
                                             imageUrl={item.summary.thumbnail?.source}
                                             size={item.size}
+                                            gallery={item.gallery}
                                         />
                                     );
                                 })}

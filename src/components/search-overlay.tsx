@@ -7,14 +7,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clsx } from "clsx";
 
-import { searchWiki, WikiSearchResult } from "@/services/wiki";
+import { searchWiki, FederatedResult } from "@/services/wiki";
 
 export function SearchOverlay() {
     const { isOpen, closeSearch } = useSearch();
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<WikiSearchResult[]>([]);
+    const [results, setResults] = useState<FederatedResult[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     // Debounced Search Effect
@@ -55,7 +55,7 @@ export function SearchOverlay() {
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (results[selectedIndex]) {
-                    handleSelect(results[selectedIndex].title);
+                    handleSelect(results[selectedIndex]);
                 }
             }
         };
@@ -64,7 +64,10 @@ export function SearchOverlay() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [isOpen, results, selectedIndex]);
 
-    const handleSelect = (title: string) => {
+    const handleSelect = (result: FederatedResult) => {
+        const title = result.title;
+        // Basic slug encoding, but for Federated search we might want better logic later
+        // For now, assuming standard Wiki behavior
         const slug = encodeURIComponent(title.replace(/ /g, "_"));
         router.push(`/wiki/${slug}`);
         closeSearch();
@@ -80,6 +83,7 @@ export function SearchOverlay() {
             <button
                 onClick={closeSearch}
                 className="absolute top-8 right-8 text-off-white hover:text-neon-green transition-colors"
+                aria-label="Close Search"
             >
                 <div className="text-sm font-mono tracking-widest">[CLOSE]</div>
             </button>
@@ -105,7 +109,7 @@ export function SearchOverlay() {
                     {results.map((result, index) => (
                         <button
                             key={index}
-                            onClick={() => handleSelect(result.title)}
+                            onClick={() => handleSelect(result)}
                             className={clsx(
                                 "w-full text-left p-4 border-l-4 transition-all duration-200 group flex items-baseline justify-between",
                                 index === selectedIndex
@@ -120,7 +124,7 @@ export function SearchOverlay() {
                                 {result.title}
                             </span>
                             <span className="font-mono text-xs text-gray-600 uppercase tracking-widest shrink-0 ml-4">
-                                ARTICLE
+                                {result.type}
                             </span>
                         </button>
                     ))}
