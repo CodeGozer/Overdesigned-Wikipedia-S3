@@ -12,12 +12,14 @@ interface EntryCardProps {
     category: string;
     date: string;
     href: string;
-    color?: "neon-green" | "hot-pink";
+    color?: "neon-green" | "hot-pink" | "cyber-gold" | string;
     imageUrl?: string;
     size?: "HERO" | "TALL" | "WIDE" | "STANDARD";
     className?: string;
     index?: number;
     gallery?: string[];
+    isSynthesis?: boolean;
+    synthesisTerms?: string[];
 }
 
 export function EntryCard({
@@ -30,14 +32,32 @@ export function EntryCard({
     index,
     imageUrl,
     size = "STANDARD",
-    gallery = []
+    gallery = [],
+    isSynthesis = false,
+    synthesisTerms = []
 }: EntryCardProps) {
     const [imageError, setImageError] = useState(false);
     const [galleryOpen, setGalleryOpen] = useState(false);
 
-    const borderColor = color === "neon-green" ? "border-neon-green" : "border-hot-pink";
-    const shadowColor = color === "neon-green" ? "shadow-neon-green" : "shadow-hot-pink";
-    const hoverBg = color === "neon-green" ? "group-hover:bg-neon-green" : "group-hover:bg-hot-pink";
+    let borderColor = "border-neon-green";
+    let shadowColor = "shadow-neon-green";
+    let hoverBg = "group-hover:bg-neon-green";
+    let glowColor = "#39ff14";
+    let textColor = "group-hover:text-neon-green";
+
+    if (color === "hot-pink") {
+        borderColor = "border-hot-pink";
+        shadowColor = "shadow-hot-pink";
+        hoverBg = "group-hover:bg-hot-pink";
+        glowColor = "#ff00ff";
+        textColor = "group-hover:text-hot-pink";
+    } else if (color === "cyber-gold" || isSynthesis) {
+        borderColor = "border-yellow-400";
+        shadowColor = "shadow-yellow-400";
+        hoverBg = "group-hover:bg-yellow-400";
+        glowColor = "#facc15";
+        textColor = "group-hover:text-yellow-400";
+    }
 
     // Size Classes
     const sizeClasses = {
@@ -78,7 +98,7 @@ export function EntryCard({
                     className
                 )}
                 style={{
-                    boxShadow: `4px 4px 0px ${color === 'neon-green' ? '#39ff14' : '#ff00ff'}`
+                    boxShadow: `4px 4px 0px ${glowColor}`
                 }}
                 data-animate="entry-card"
                 data-index={index}
@@ -123,12 +143,22 @@ export function EntryCard({
                 {/* Gradient Scrim for Text Legibility */}
                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
 
+                {isSynthesis && (
+                    <div className="absolute inset-0 z-15 pointer-events-none mix-blend-overlay opacity-20 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,#facc15_2px,#facc15_4px)] group-hover:animate-pulse"></div>
+                )}
+
                 {/* Content */}
                 <div className="relative z-20 p-6 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start">
                         {/* Category Badge */}
-                        <span className="font-mono text-[10px] uppercase tracking-widest bg-black/50 backdrop-blur-sm px-2 py-1 text-white border border-white/20">
-                            [{category}]
+                        <span className={clsx(
+                            "font-mono text-[10px] uppercase tracking-widest px-2 py-1 border backdrop-blur-sm",
+                            isSynthesis ? "bg-yellow-400/20 text-yellow-400 border-yellow-400 animate-pulse font-bold" : "bg-black/50 text-white border-white/20"
+                        )}>
+                            {isSynthesis && synthesisTerms && synthesisTerms.length > 0 
+                                ? `[ ${synthesisTerms.join(' × ')} ]` 
+                                : `[${category}]`
+                            }
                         </span>
 
                         {/* Date / ID */}
@@ -139,13 +169,17 @@ export function EntryCard({
 
                     <div>
                         <h3 className={clsx(
-                            "font-display font-bold uppercase tracking-tight text-white group-hover:text-neon-green transition-colors leading-none",
-                            size === "HERO" ? "text-4xl md:text-5xl" : "text-xl md:text-2xl"
+                            "font-display font-bold uppercase tracking-tight text-white transition-colors leading-none",
+                            textColor,
+                            size === "HERO" ? "text-4xl md:text-5xl" : "text-xl md:text-2xl",
+                            isSynthesis && "italic"
                         )}>
                             {title}
                         </h3>
                         {/* Optimized Divider Animation (Scale instead of Width) */}
-                        <div className="h-0.5 w-full bg-neon-green mt-2 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
+                        <div className="h-0.5 w-full bg-white/20 mt-2 origin-left relative overflow-hidden">
+                             <div className="absolute inset-0 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" style={{ backgroundColor: glowColor }} />
+                        </div>
                     </div>
                 </div>
             </Link>
@@ -154,7 +188,7 @@ export function EntryCard({
                 isOpen={galleryOpen}
                 images={effectiveGallery}
                 onClose={() => setGalleryOpen(false)}
-                color={color}
+                color={color as any}
             />
         </>
     );

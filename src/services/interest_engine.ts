@@ -20,6 +20,8 @@ export interface InterestResult {
     category?: string;
     summary?: any;
     apiBaseUrl?: string;
+    isSynthesis?: boolean;
+    synthesisTerms?: string[];
 }
 
 export interface InterestVector {
@@ -213,77 +215,65 @@ export async function getHybridRecommendations(
 
     // --- SYNTHESIS MODE LOGIC ---
     if (mode === 'SYNTHESIS' && vectors.length > 1) {
-        const combinedQuery = vectors.map(v => v.term).join(' ');
-        console.log(`[SYNTHESIS] Attempting cross-vector search: "${combinedQuery}"`);
-
-        // 1. Try to find a Wikipedia page for the combined string (e.g., "Star Wars Lego")
-        const synthesisResults = await fetchWikiMoreLike(combinedQuery, wikiLimit);
-
-        // 2. Try Fandom for the combined string
-        // We use the first term (or its locked source) as the likely "base" fandom
-        let fandomUrl = vectors[0].lockedSource;
-        if (!fandomUrl) {
-            fandomUrl = await findFandomWiki(vectors[0].term) || undefined;
-        }
-
-        let synthesisFandom: WikiPage[] = [];
-
-        if (fandomUrl) {
-            synthesisFandom = await fetchFandomMoreLike(fandomUrl, combinedQuery, fandomLimit);
-        }
-
-        const combinedResults = [...synthesisResults, ...synthesisFandom];
-
-        if (combinedResults.length > 0) {
-            // SUCCESS: We found intersection data!
-            // Map them
-            combinedResults.forEach(page => {
-                if (!usedTitles.has(page.title) && !page.title.includes("(disambiguation)")) {
-                    results.push({
-                        title: page.title,
-                        type: 'AI_DISCOVERY',
-                        source: synthesisResults.includes(page) ? 'WIKIPEDIA' : 'FANDOM',
-                        apiBaseUrl: synthesisResults.includes(page) ? undefined : fandomUrl!,
-                        summary: {
-                            title: page.title,
-                            extract: page.extract,
-                            thumbnail: page.thumbnail
-                        }
-                    });
-                    usedTitles.add(page.title);
-                }
+        console.log(`[SYNTHESIS] Calling Concept Blender for:`, vectors.map(v => v.term));
+        
+        try {
+            const res = await fetch('/api/blend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ terms: vectors.map(v => v.term) })
             });
-
-            // Also add the original inputs as "User Selected" anchors
-            for (const vec of vectors) {
-                // Determine Source based on lock
-                if (vec.lockedSource) {
-                    results.unshift({
-                        title: vec.term, // Might need to fetch actual title
-                        type: 'USER_SELECTED',
-                        source: 'FANDOM',
-                        apiBaseUrl: vec.lockedSource,
-                        summary: { title: vec.term, extract: "User Selected Fandom Source" }
-                    });
-                    usedTitles.add(vec.term);
-                } else {
-                    const canonical = await findCanonicalPage(vec.term);
-                    const title = canonical ? canonical.title : vec.term;
-                    if (!usedTitles.has(title)) {
-                        results.unshift({
-                            title: title,
+            const data = await res.json();
+            
+            if (data.titles && Array.isArray(data.titles) && data.titles.length > 0) {
+                // We have our synthesis titles! 
+                
+                // Also add the original inputs as "User Selected" anchors
+                for (const vec of vectors) {
+                    if (vec.lockedSource) {
+                        results.push({
+                            title: vec.term,
                             type: 'USER_SELECTED',
-                            source: 'WIKIPEDIA'
+                            source: 'FANDOM',
+                            apiBaseUrl: vec.lockedSource,
+                            summary: { title: vec.term, extract: "User Selected Fandom Source" }
+                        });
+                        usedTitles.add(vec.term);
+                    } else {
+                        const canonical = await findCanonicalPage(vec.term);
+                        const title = canonical ? canonical.title : vec.term;
+                        if (!usedTitles.has(title)) {
+                            results.push({
+                                title: title,
+                                type: 'USER_SELECTED',
+                                source: 'WIKIPEDIA'
+                            });
+                            usedTitles.add(title);
+                        }
+                    }
+                }
+                
+                // Now push the blended concepts
+                for (const title of data.titles) {
+                    if (!usedTitles.has(title)) {
+                        results.push({
+                            title: title,
+                            type: 'AI_DISCOVERY',
+                            source: 'WIKIPEDIA',
+                            isSynthesis: true,
+                            synthesisTerms: vectors.map(v => v.term)
                         });
                         usedTitles.add(title);
                     }
                 }
+                
+                return results.slice(0, 12);
+            } else {
+                console.warn("[SYNTHESIS] No titles returned. Reverting to PARALLEL.");
             }
-
-            return results.slice(0, 12);
-        } else {
-            // FAIL: No intersection found. Fallback to Parallel.
-            console.warn("[SYNTHESIS] No correlation found. Reverting to PARALLEL.");
+        } catch (e) {
+             console.error("[SYNTHESIS] Error communicating with blend API:", e);
+             console.warn("[SYNTHESIS] Reverting to PARALLEL.");
         }
     }
 

@@ -37,6 +37,8 @@ interface InterestItem {
     summary: ArticleSummary | null;
     apiBaseUrl?: string;
     gallery?: string[];
+    isSynthesis?: boolean;
+    synthesisTerms?: string[];
 }
 
 interface HomeOrchestratorProps {
@@ -158,6 +160,9 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     if (result.type === 'USER_SELECTED') {
                         category = 'Obsession';
                         color = 'neon-green';
+                    } else if (result.isSynthesis) {
+                        category = 'SYNTHESIS COLLISION';
+                        color = 'cyber-gold'; // Maps to a unique color space in entry-card
                     } else if (result.source === 'FANDOM') {
                         category = 'FANDOM // LORE';
                         color = 'hot-pink'; // or gold/purple? Let's stick to hot-pink for Lore
@@ -169,12 +174,14 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                     return {
                         slug: slug,
                         label: label,
-                        size: (result.type === 'USER_SELECTED' ? 'HERO' : 'STANDARD') as "HERO" | "STANDARD",
+                        size: (result.isSynthesis ? 'HERO' : (result.type === 'USER_SELECTED' ? 'HERO' : 'STANDARD')) as "HERO" | "STANDARD",
                         category: category,
                         color: color,
                         summary: summary,
                         apiBaseUrl: result.apiBaseUrl, // Pass it through
-                        gallery: summary.gallery // Pass gallery
+                        gallery: summary.gallery, // Pass gallery
+                        isSynthesis: result.isSynthesis,
+                        synthesisTerms: result.synthesisTerms
                     };
                 })
             );
@@ -317,6 +324,8 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                             imageUrl={item.summary.thumbnail?.source}
                                             size={item.size}
                                             gallery={item.gallery}
+                                            isSynthesis={item.isSynthesis}
+                                            synthesisTerms={item.synthesisTerms}
                                         />
                                     );
                                 })}
