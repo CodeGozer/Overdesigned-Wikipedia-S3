@@ -9,7 +9,7 @@ import { RandomButton } from './random-button';
 import { LuckyButton } from './lucky-button';
 import { KineticMarquee } from './kinetic-marquee';
 import { EntryCard } from './entry-card';
-import { InterestVector, generateGrid } from '@/services/interest_engine';
+import { InterestVector, generateGrid, InterestResult } from '@/services/interest_engine';
 import { getWikiSummary } from '@/services/wiki';
 import { SystemTutorial } from './system-tutorial';
 
@@ -54,11 +54,13 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
     const [showTutorial, setShowTutorial] = useState(false);
     const [searchMode, setSearchMode] = useState<'PARALLEL' | 'SYNTHESIS'>('PARALLEL');
 
-    // Keep track of interests for event listeners
+    // Keep track of state for event listeners
     const interestsRef = React.useRef(userInterests);
+    const searchModeRef = React.useRef(searchMode);
     React.useEffect(() => {
         interestsRef.current = userInterests;
-    }, [userInterests]);
+        searchModeRef.current = searchMode;
+    }, [userInterests, searchMode]);
 
     // Persistence Logic (Back Button Fix) & Tutorial Check
     React.useEffect(() => {
@@ -104,17 +106,30 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             handleSearch(newInterests, 2, 'PARALLEL', true);
         };
 
-        // Listen for "Inject Chaos" (Append)
-        const handleInjectChaos = (e: any) => {
-            const seedTerm = e.detail.term;
-            console.log("INJECTING CHAOS:", seedTerm);
+        // Listen for "Inject Chaos" (Expand current AI results)
+        const handleInjectChaos = async () => {
+            console.log("EXPANDING VECTORS: Generating more results for current state.");
 
             const current = interestsRef.current;
-            // Avoid duplicates
-            if (current.some(i => i.term === seedTerm)) return;
+            if (current.length === 0) return;
 
-            const newInterests = [...current, { term: seedTerm }];
-            handleSearch(newInterests, 2, 'PARALLEL', true);
+            setIsCalculating(true);
+            try {
+                // Generate grid using current interests and mode to fetch more items
+                const gridResults = await generateGrid(current, 2, searchModeRef.current);
+                const newArticles = await buildVisualArticles(gridResults);
+                
+                // Hack to update user interests without triggering a full re-render overwrite
+                setDisplayedArticles(prev => {
+                    const existingSlugs = new Set(prev.map(a => a.slug));
+                    const uniqueNew = newArticles.filter(a => !existingSlugs.has(a.slug));
+                    return [...prev, ...uniqueNew];
+                });
+            } catch(err) {
+                console.error("Chaos expansion failed", err);
+            } finally {
+                setIsCalculating(false);
+            }
         };
 
         window.addEventListener('nicopedia:randomize', handleRandomize);
@@ -125,6 +140,57 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             window.removeEventListener('nicopedia:inject-chaos', handleInjectChaos);
         };
     }, []);
+
+    const buildVisualArticles = async (gridResults: InterestResult[]): Promise<InterestItem[]> => {
+        const items = await Promise.all(
+            gridResults.map(async (result) => {
+                // Normalize title for URL
+                const slug = result.title.replace(/ /g, '_');
+
+                // Use pre-fetched summary if available
+                let summary = result.summary;
+                if (!summary) {
+                    summary = await getWikiSummary(result.title, result.apiBaseUrl);
+                }
+
+                // Determine Visual Style based on Source/Type
+                let category = 'Discovery';
+                let color = 'hot-pink';
+                let label = result.title.replace(/_/g, ' ');
+
+                if (result.type === 'USER_SELECTED') {
+                    category = 'Obsession';
+                    color = 'neon-green';
+                } else if (result.isSynthesis) {
+                    category = 'SYNTHESIS COLLISION';
+                    color = 'cyber-gold'; 
+                } else if (result.source === 'FANDOM') {
+                    category = 'FANDOM // LORE';
+                    color = 'hot-pink'; 
+                } else {
+                    category = 'WIKI // DATA';
+                    color = 'neon-blue'; 
+                }
+
+                let finalSize: "HERO" | "STANDARD" = 'STANDARD';
+                if (result.isSynthesis || result.type === 'USER_SELECTED') finalSize = 'HERO';
+
+                return {
+                    slug: slug,
+                    label: label,
+                    size: finalSize,
+                    category: category,
+                    color: color,
+                    summary: summary,
+                    apiBaseUrl: result.apiBaseUrl,
+                    gallery: summary?.gallery,
+                    isSynthesis: result.isSynthesis,
+                    synthesisTerms: result.synthesisTerms
+                };
+            })
+        );
+        return items as InterestItem[];
+    };
 
     const handleSearch = async (interests: InterestVector[], depth: number = 2, correlationMode: 'PARALLEL' | 'SYNTHESIS' = 'PARALLEL', saveToStorage = true) => {
         setIsCalculating(true);
@@ -140,51 +206,7 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
             const gridResults = await generateGrid(interests, depth, correlationMode);
 
             // 2. Map results to visual items
-            const newArticles = await Promise.all(
-                gridResults.map(async (result) => {
-                    // Normalize title for URL
-                    const slug = result.title.replace(/ /g, '_');
-
-                    // Use pre-fetched summary if available
-                    let summary = result.summary;
-                    if (!summary) {
-                        // Pass apiBaseUrl if available
-                        summary = await getWikiSummary(result.title, result.apiBaseUrl);
-                    }
-
-                    // Determine Visual Style based on Source/Type
-                    let category = 'Discovery';
-                    let color = 'hot-pink';
-                    let label = result.title.replace(/_/g, ' ');
-
-                    if (result.type === 'USER_SELECTED') {
-                        category = 'Obsession';
-                        color = 'neon-green';
-                    } else if (result.isSynthesis) {
-                        category = 'SYNTHESIS COLLISION';
-                        color = 'cyber-gold'; // Maps to a unique color space in entry-card
-                    } else if (result.source === 'FANDOM') {
-                        category = 'FANDOM // LORE';
-                        color = 'hot-pink'; // or gold/purple? Let's stick to hot-pink for Lore
-                    } else {
-                        category = 'WIKI // DATA';
-                        color = 'neon-blue'; // Data
-                    }
-
-                    return {
-                        slug: slug,
-                        label: label,
-                        size: (result.isSynthesis ? 'HERO' : (result.type === 'USER_SELECTED' ? 'HERO' : 'STANDARD')) as "HERO" | "STANDARD",
-                        category: category,
-                        color: color,
-                        summary: summary,
-                        apiBaseUrl: result.apiBaseUrl, // Pass it through
-                        gallery: summary.gallery, // Pass gallery
-                        isSynthesis: result.isSynthesis,
-                        synthesisTerms: result.synthesisTerms
-                    };
-                })
-            );
+            const newArticles = await buildVisualArticles(gridResults);
 
             setDisplayedArticles(newArticles);
             setMode('DASHBOARD');
@@ -279,8 +301,8 @@ export function HomeOrchestrator({ initialArticles }: HomeOrchestratorProps) {
                                         </span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <RandomButton />
-                                        <LuckyButton />
+                                        <RandomButton isLoading={isCalculating} />
+                                        <LuckyButton isLoading={isCalculating} />
                                         {/* Desktop Reset Button */}
                                         <button
                                             onClick={resetProfile}

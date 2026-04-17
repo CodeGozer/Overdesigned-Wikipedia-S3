@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth dark" suppressHydrationWarning>
       <body
-        className={`${syne.variable} ${spaceMono.variable} ${inter.variable} antialiased min-h-screen bg-deep-void text-off-white font-body selection:bg-neon-green selection:text-black`}
+        className={`${syne.variable} ${spaceMono.variable} ${inter.variable} antialiased min-h-screen bg-deep-void text-off-white font-body selection:bg-neon-green selection:text-black overflow-x-hidden`}
         suppressHydrationWarning
       >
         <SmoothScroll />

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // TODO: Plak hier je OpenRouter API Key!
-const OPENROUTER_API_KEY = "PLAK_HIER_JE_OPENROUTER_KEY";
+const OPENROUTER_API_KEY = "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";
 
 export async function POST(request: Request) {
     try {
@@ -12,19 +12,22 @@ export async function POST(request: Request) {
         }
 
         const prompt = `
-You are an "Interest Discovery Engine" designed to find quirky, fascinating intersections between seemingly unrelated topics that will send the user down a Wikipedia rabbit hole.
-The user will provide an array of topics. You must find the deepest cultural, historical, fictional, or scientific bridge that connects them.
-Do not just mash the words together. 
-For example: 
-[Apple, Orange] -> Smoothie
-[South Africa, Malaysia] -> Cape Malays
-[Batman, Vampire] -> Batman & Dracula: Red Rain
-[Nuclear Physics, Art] -> Trinity (nuclear test) glass (Trinitite)
+You are Nicopedia's "Concept Blender", an AI designed to find universally fun, intriguing, and mind-blowing connections between unrelated topics.
 
-Only return a valid JSON array of strings containing exactly 3 highly specific Wikipedia article titles that represent this quirky synthesis, ordered by how mind-blowing they are.
-Do not include markdown or code block syntax like \`\`\`json. Just the raw JSON array.
+Your goal is to find the cultural, pop-culture, historical, or aesthetic crossover between the provided terms to send the user down a fun Wikipedia rabbit hole.
+CRITICAL RULES:
+1. Avoid anything overly scientific (like raw biological taxonomy), controversial, or polarizing. Keep it accessible, lighthearted, and fun!
+2. You MUST return exactly 3 real, accurate Wikipedia article titles.
+3. Do not just mash the words together. Find the "smoothie" that blends their vibes.
 
-Topics: [${terms.join(', ')}]
+Examples:
+- [Apple, Orange] -> ["Fruit salad", "Fruitopia", "Citrus"]
+- [Batman, Vampire] -> ["Batman & Dracula: Red Rain", "Vampire Noir", "Count Dracula in comics"]
+- [Cowboy, Space] -> ["Space Western", "Cowboy Bebop", "Firefly (TV series)"]
+
+Only return a valid JSON array of strings. Do not include markdown \`\`\`json blocks, formatting, or conversational text. Just the raw array.
+
+Topics to blend: [${terms.join(', ')}]
         `;
 
         // Directe Fetch naar OpenRouter (geen zware SDK nodig!)
@@ -38,6 +41,7 @@ Topics: [${terms.join(', ')}]
                 // Je kunt hier elk model op OpenRouter kiezen! 
                 // Zelfs de "free" versies als je key geen tegoed heeft.
                 model: "google/gemini-2.5-flash", 
+                max_tokens: 500, // Voeg deze limiet toe: voorkomt de "65535 tokens maar kan maar 16000 betalen" error!
                 messages: [
                     { role: "user", content: prompt }
                 ]

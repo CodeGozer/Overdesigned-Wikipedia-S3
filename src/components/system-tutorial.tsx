@@ -54,7 +54,7 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
                     y: rect.top,
                     width: rect.width,
                     height: rect.height,
-                    side: 'right'
+                    side: 'top'
                 });
             }
 
@@ -86,7 +86,7 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
                     y: rect.top,
                     width: rect.width,
                     height: rect.height,
-                    side: 'right'
+                    side: 'bottom' // Changed from 'right' to 'bottom' to prevent off-screen overflow
                 });
             }
 
@@ -102,7 +102,7 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
                     y: rect.top,
                     width: rect.width,
                     height: rect.height,
-                    side: 'bottom'
+                    side: 'top'
                 });
             }
 
@@ -126,8 +126,8 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
             { opacity: 1, duration: 0.5 }
         )
             .fromTo(".tutorial-line",
-                { drawSVG: "0%" },
-                { drawSVG: "100%", duration: 1, stagger: 0.2, ease: "power2.out" } // Note: DrawSVG requires plugin, we'll use stroke-dasharray
+                { opacity: 0 },
+                { opacity: 0.5, duration: 1, stagger: 0.2, ease: "power2.out" } // Fallback to opacity since DrawSVG plugin is missing
             )
             .fromTo(".tutorial-label",
                 { opacity: 0, y: 10 },
@@ -138,9 +138,9 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[100] font-mono select-none tutorial-overlay">
+        <div className="fixed inset-0 z-[100] font-mono select-none overflow-hidden tutorial-overlay">
             {/* Dimming Layer */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/70" />
 
             {/* Canvas / SVG Layer */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none">
@@ -163,7 +163,7 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
                     } else if (t.side === 'right') {
                         startX = t.x + t.width;
                         startY = t.y + t.height / 2;
-                        endX = startX + 100;
+                        endX = startX + 20;
                         endY = startY;
                     }
 
@@ -191,23 +191,23 @@ export function SystemTutorial({ onClose }: SystemTutorialProps) {
             {targets.map((t) => {
                 let style: React.CSSProperties = {};
                 if (t.side === 'top') {
-                    style = { left: t.x + t.width / 2, top: t.y - 120, transform: 'translateX(-50%)' };
+                    style = { left: t.x + t.width / 2, top: t.y - 110, transform: 'translateX(-50%)' };
                 } else if (t.side === 'bottom') {
-                    style = { left: t.x + t.width / 2, top: t.y + t.height + 40, transform: 'translateX(-50%)' };
+                    style = { left: t.x + t.width / 2, top: t.y + t.height + 20, transform: 'translateX(-50%)' };
                 } else if (t.side === 'right') {
-                    style = { left: t.x + t.width + 110, top: t.y + t.height / 2, transform: 'translateY(-50%)' };
+                    style = { left: t.x + t.width + 30, top: t.y + t.height / 2, transform: 'translateY(-50%)' };
                 }
 
                 return (
                     <div
                         key={t.id}
-                        className="absolute tutorial-label text-neon-green"
+                        className="absolute tutorial-label text-neon-green bg-black/80 backdrop-blur-md border border-neon-green/30 p-4 shadow-[0_0_15px_rgba(0,255,0,0.1)] min-w-[250px] max-w-xs"
                         style={style}
                     >
-                        <div className="text-xs font-bold tracking-widest uppercase mb-1 whitespace-nowrap">
+                        <div className="text-xs font-bold tracking-widest uppercase mb-2 whitespace-nowrap">
                             {t.label}
                         </div>
-                        <div className="text-[10px] text-white/60 tracking-wider">
+                        <div className="text-[10px] text-white/80 tracking-wider font-mono leading-relaxed">
                             {t.description}
                         </div>
                     </div>
